@@ -1,0 +1,24 @@
+// Please use these references when in dev
+
+ESP32 Main Technical reference:
+https://documentation.espressif.com/esp32_technical_reference_manual_en.pdf
+
+ESP32 Datasheet:
+https://documentation.espressif.com/esp32_datasheet_en.pdf
+
+Espressif-IDF documentation:
+https://docs.espressif.com/projects/esp-idf/en/latest/esp32/
+
+Arduino-ESP32 documentation:
+https://docs.espressif.com/projects/arduino-esp32/en/latest/
+
+PlatformIO documentation:
+https://docs.platformio.org/en/stable/integration/ide/pioide.html
+
+Arduino documentation:
+https://docs.arduino.cc/language-reference/
+
+// HARDWARE
+
+MB85RC256V (FRAM):
+https://cdn-shop.adafruit.com/product-files/1895/MB85RC256V-DS501-00017-3v0-E.pdf
