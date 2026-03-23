@@ -22,3 +22,40 @@ https://docs.arduino.cc/language-reference/
 
 MB85RC256V (FRAM):
 https://cdn-shop.adafruit.com/product-files/1895/MB85RC256V-DS501-00017-3v0-E.pdf
+
+Gravity 10 DOF IMU AHRS BNO055 + BMP280
+https://www.dfrobot.com/product-1793.html?gad_source=1&gad_campaignid=23441887437&gbraid=0AAAAADucPlDF1uprJzO8KjEwU2xBV02kN&gclid=CjwKCAiAzOXMBhASEiwAe14SaZK72Ca_y5YDV_GZ4M7z21VGJ4UMUjgPzSl8xKDt-O8TLka1pm4RGxoC2OQQAvD_BwE
+
+Run-cam Split 4
+https://www.runcam.com/download/split4k/RC_Split_4k_Manual_EN.pdf
+
+SG90 Servo Motors
+https://handsontec.com/dataspecs/motor_fan/SG90-Servo.pdf
+
+PCA9685 Servo Driver Board
+https://cdn-shop.adafruit.com/datasheets/PCA9685.pdf
+
+IRLB8721 MOSFET
+https://cdn-shop.adafruit.com/datasheets/irlb8721pbf.pdf
+
+AMS1117-3.3 (3v3 Rail) SOT-223
+https://www.amazon.com/Chanzon-AMS1117-Including-Regulator-Transistor/dp/B083TDQBPN/ref=sr_1_3?crid=3AK8LBZG5G60&dib=eyJ2IjoiMSJ9.8zAO6ga_ZkaUw8YsbBm208wiF2P94DPKEdPf_bM6aANBnx1xZc_H-P63EHJbNZ4Emmqodhw6hUomNY8-Lgn_3-Xn3auvG2NZ8WbvjPLkoq-oyFdg4JhIevyN89jvvUDqleHO4D9onz8UqFkRq7Vw1ZFEBh_orLiF36L1aETUVhVb0yj7P2VkucO4E0uFX_Ma4MWvAKB0dwjU-yORRhsGwRHPAlGjMa4R99A9sTfIQb0.hQuM2tgPoOCYX0rOA07hXhp4z7AZPFGWtlkl1xHIj-U&dib_tag=se&keywords=AMS1117&qid=1771752270&s=books&sprefix=ams111%2Cstripbooks%2C216&sr=1-3
+https://www.amazon.com/Cermant-Adapter-SOT223-2-54mm-Header/dp/B0FRDS1BVV/ref=sr_1_16?crid=3A1V5HQIWSZ7F&dib=eyJ2IjoiMSJ9.5RqWUzhm4bPdFhuKiJugOk_poQ_f5RELPKWWBrcam8xPBj92xIxRZ6cfGrmC-Ovieq1m0Egxx4H4mucukA3RZCP32A3nT4ItxccMQrKy1ysccOkLXhzRu_TutY8WIu3_i4Ql7iVdZkDTgKbjtTb-4o6VSLsE5h9uhm9QtTO8nQddLfl8896PbbDi30NrcL9ClKJ14Bx7Al2qhQn5FcMCxR7awFVpWiacuaLRM4vu1zM._7XDubszgZOsu6eHc-D6gqGM6l7aaP4YRknZGUdAD50&dib_tag=se&keywords=sot223%2Badapter&qid=1771754767&sprefix=sot223%2Badapt%2Caps%2C194&sr=8-16&th=1
+
+TPS5430-5.0 (5v Rail)
+https://www.digikey.com/en/products/detail/texas-instruments/TPS54308DDCT/7403258
+https://www.amazon.com/dp/B09J2VG3BH/ref=sspa_dk_detail_1?pd_rd_i=B09J2VG3BH&pd_rd_w=PbKgG&content-id=amzn1.sym.8c2f9165-8e93-42a1-8313-73d3809141a2&pf_rd_p=8c2f9165-8e93-42a1-8313-73d3809141a2&pf_rd_r=KH7S0PZTTXGNHRPP164Z&pd_rd_wg=gy03W&pd_rd_r=d24bd126-2500-4b7a-9101-ae9a38622c21&sp_csd=d2lkZ2V0TmFtZT1zcF9kZXRhaWw&th=1
+
+//inductor
+Bourns SRR1260-150M
+// Hardware Debugging
+Battery polarity — LIPO1 and LIPO2 positive terminals still appear to connect to GND and negative to +7.4V. This is backwards and will destroy everything. Double check this is correct before ordering anything.
+FRAM address pins — MB85RC256V pins 6, 7, 8 (A0, A1, A2) appear unconnected. Tie all three to GND to set address 0x50 which matches your config.h.
+FRAM WP pin — pin 3 looks unconnected. Tie to +3.3V to disable write protection.
+I2C pull-up resistors — still missing. Four resistors, 4.7kΩ each, SDA and SCL to 3.3V on both buses.
+TPS54308 inductor — L1 shows value 15, confirm units are µH not just 15.
+GPIO4 for MOSFET — confirm the wire from R3 actually connects to GPIO4 on the ESP32, it's hard to tell at this zoom level.
+RunCam VCC — pin 5 connection looks thin, zoom in and confirm it's actually connected.
+
+// Software Architecture
+
