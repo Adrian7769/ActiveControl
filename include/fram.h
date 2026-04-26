@@ -7,7 +7,7 @@ class FRAM {
         FRAM();
         ~FRAM();
         byte ReadByte(uint16_t adr);
-        void begin();
+        void init();
         bool WriteByte(uint16_t adr, byte data);
     private:
         uint32_t _clock_;
