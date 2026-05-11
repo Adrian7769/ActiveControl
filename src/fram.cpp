@@ -14,7 +14,7 @@ FRAM::~FRAM() {
 };
 // -------- PUBLIC METHODS -------- //
 void FRAM::begin() {
-    Wire.begin(ESP_SDA_PIN,ESP_SCL_PIN);
+    Wire.begin(ESP_SDA_IN,ESP_SCL_PIN);
     Wire.setClock(_clock_);
     // If Control Block Not Initialized With Magic Byte
     if (FRAM_MAGIC_VAL != ReadControlBlockByte(FRAM_MAGIC_BYTE)) {
@@ -139,7 +139,7 @@ bool FRAM::_WriteByte_(uint16_t adr, uint8_t byte) {
 };
 bool FRAM::WriteByte(uint8_t byte) {
 	return _WriteByte_(_cursor_,byte);
-}
+};
 bool FRAM::RawByteWrite(uint16_t adr, uint8_t byte) {
     Wire.beginTransmission(_address_);
     // Queue Start

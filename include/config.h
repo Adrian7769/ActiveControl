@@ -1,8 +1,8 @@
 // MB85RC256V
 #define FRAM_ADR 0x50
 #define FRAM_CLOCK 50000 // 50 kHz
-#define FRAM_MAX_RECORD 2048 // Max Records
-#define FRAM_MAGIC_VAL 0x45
+#define FRAM_MAX_RECORD 1023 // Max Records
+#define FRAM_MAGIC_VAL 0x45 // 69
 // Control Block Structure (16 bytes)
 // [0] Cursor MSB
 // [1] Cursor LSB
@@ -35,7 +35,7 @@ struct DataBlock {
 
 #define FRAM_DATABLOCK_START 0x0010 // 16th byte
 #define FRAM_DATABLOCK_END 0x7FFF // (32,768 bytes)
-			   
+// Start writing data upon liftoff -> landing
 // ESP32 PIN MAP
 #define ESP_SDA_PIN 21
 #define ESP_SCL_PIN 22
