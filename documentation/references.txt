@@ -26,6 +26,9 @@ https://cdn-shop.adafruit.com/product-files/1895/MB85RC256V-DS501-00017-3v0-E.pd
 Gravity 10 DOF IMU AHRS BNO055 + BMP280
 https://www.dfrobot.com/product-1793.html?gad_source=1&gad_campaignid=23441887437&gbraid=0AAAAADucPlDF1uprJzO8KjEwU2xBV02kN&gclid=CjwKCAiAzOXMBhASEiwAe14SaZK72Ca_y5YDV_GZ4M7z21VGJ4UMUjgPzSl8xKDt-O8TLka1pm4RGxoC2OQQAvD_BwE
 
+Bosch BMP280 Documentation
+https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf
+
 Run-cam Split 4
 https://www.runcam.com/download/split4k/RC_Split_4k_Manual_EN.pdf
 
