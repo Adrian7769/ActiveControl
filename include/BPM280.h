@@ -169,7 +169,6 @@ public:
    * @brief reset Reset sensor
    */
   void reset();
-
   /**
    * @fn setCtrlMeasMode
    * @brief setCtrlMeasMode Set control measure mode
@@ -183,41 +182,32 @@ public:
    * @param eSampling One enum of eSampling_t
    */
   void setCtrlMeasSamplingTemp(eSampling_t eSampling);
-
   /**
    * @fn setCtrlMeasSamplingPress
    * @brief setCtrlMeasSamplingPress Set control measure pressure oversampling
    * @param eSampling One enum of eSampling_t
    */
   void setCtrlMeasSamplingPress(eSampling_t eSampling);
-
   /**
    * @fn setConfigFilter
    * @brief setConfigFilter Set config filter
    * @param eFilter One enum of eConfigFilter_t
    */
   void setConfigFilter(eConfigFilter_t eFilter);
-
   /**
    * @fn setConfigTStandby
    * @brief setConfigTStandby Set config standby time
    * @param eT One enum of eConfigTStandby_t
    */
   void setConfigTStandby(eConfigTStandby_t eT);
-
 protected:
   void    getCalibrate();
-
   int32_t   getTemperatureRaw();
   int32_t   getPressureRaw();
-
   uint8_t   getReg(uint8_t reg);
   void      writeRegBits(uint8_t reg, uint8_t field, uint8_t val);
-
   virtual void    writeReg(uint8_t reg, uint8_t *pBuf, uint16_t len) = 0;
   virtual void    readReg(uint8_t reg, uint8_t *pBuf, uint16_t len) = 0;
-
-
 public:
   eStatus_t   lastOperateStatus; /**< lastOperateStatus Last operate status*/
 

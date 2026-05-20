@@ -11,7 +11,6 @@ void setup() {
     delay(5000);
     // Fram and Datablock struct
     Fram.begin();
-    DataBlock block;
 }
 
 uint16_t ADR = 1;

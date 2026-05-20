@@ -1,7 +1,6 @@
 #include "fram.h"
 #include <Wire.h>
 #include "config.h"
-
 // ---------- CONSTRUCTOR -------- //
 FRAM::FRAM() { 
     _clock_ = FRAM_CLOCK;
@@ -27,7 +26,6 @@ void FRAM::begin() {
 	    #ifdef DIAG_FRAM 
 	    Serial.print("Failed to Update Magic Byte!");
 	    #endif
-	
 	// Update Cursor to The start of the Datablock 
 	if(WriteControlBlockByte(FRAM_CURSOR_MSB, (_cursor_ >> 8) & 0xFF) && WriteControlBlockByte(FRAM_CURSOR_LSB, (_cursor_ & 0xFF)) ) {
 	    #ifdef DIAG_FRAM
@@ -59,11 +57,8 @@ uint16_t FRAM::GetRecordCount() {
 	return ((ReadControlBlockByte(FRAM_RECORD_COUNT_MSB) << 8) | 
 			ReadControlBlockByte(FRAM_RECORD_COUNT_LSB));
 };
-bool WriteDataBlock(DataBlock* block, uint8_t len) {
-	for (int i = 0; i < std::sizeof(block); i++) {
-		WriteByte(block[i]);
-	}
-
+bool WriteDataBlock(DataBlock* block, uint16_t adr) {
+	return true;
 }
 // -------- PRIVATE METHODS -------- //
 uint8_t FRAM::ReadControlBlockByte(uint16_t adr) {
@@ -86,7 +81,6 @@ bool FRAM::WriteControlBlockByte(uint16_t adr, uint8_t byte) {
 		return false;
 	}
 };
-
 uint8_t FRAM::ReadByte(uint16_t adr) {
     Wire.beginTransmission(_address_);
     // Que Start
