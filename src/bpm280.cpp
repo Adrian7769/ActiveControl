@@ -1,16 +1,3 @@
-/*!
- * @file DFRobot_BMP280.cpp
- * @brief Provides an Arduino library for reading and interpreting Bosch BMP280 data over I2C. 
- * @n Used to read current temperature, air pressure and calculate altitude.
- *
- * @copyright   Copyright (c) 2010 DFRobot Co.Ltd (http://www.dfrobot.com)
- * @license     The MIT License (MIT)
- * @author [Frank](jiehan.guo@dfrobot.com)
- * @version  V1.0
- * @date  2019-03-12
- * @url https://github.com/DFRobot/DFRobot_BMP280
- */
-
 #include "DFRobot_BMP280.h"
 
 const DFRobot_BMP280::sRegs_t PROGMEM   _sRegs = DFRobot_BMP280::sRegs_t();

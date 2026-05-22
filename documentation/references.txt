@@ -29,6 +29,10 @@ https://www.dfrobot.com/product-1793.html?gad_source=1&gad_campaignid=2344188743
 Bosch BMP280 Documentation
 https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf
 
+
+
+
+
 Run-cam Split 4
 https://www.runcam.com/download/split4k/RC_Split_4k_Manual_EN.pdf
 
