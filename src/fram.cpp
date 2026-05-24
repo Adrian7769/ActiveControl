@@ -1,145 +1,184 @@
 #include "fram.h"
-#include <Wire.h>
 #include "config.h"
-// ---------- CONSTRUCTOR -------- //
-FRAM::FRAM() { 
-    _clock_ = FRAM_CLOCK;
+
+FRAM::FRAM() {
+    _clock_   = FRAM_CLOCK;
     _address_ = FRAM_ADR;
-    _cursor_ = FRAM_DATABLOCK_START; // Set to Datablock 0 by Default
-};
-// --------- DESTRUCTOR -------- //
-FRAM::~FRAM() {
-    Wire.end();
-};
-// -------- PUBLIC METHODS -------- //
-void FRAM::begin() {
-    Wire.begin(ESP_SDA_IN,ESP_SCL_PIN);
-    Wire.setClock(_clock_);
-    // If Control Block Not Initialized With Magic Byte
-    if (FRAM_MAGIC_VAL != ReadControlBlockByte(FRAM_MAGIC_BYTE)) {
-	// Update Magic Byte To Magic Value 
-	if (WriteControlBlockByte(FRAM_MAGIC_BYTE, FRAM_MAGIC_VAL)) {
-	    #ifdef DIAG_FRAM
-	    Serial.print("Updated Magic Byte to: 0x");Serial.print(FRAM_MAGIC_VAL,HEX);Serial.println("");
-	    #endif
-	} else {
-	    #ifdef DIAG_FRAM 
-	    Serial.print("Failed to Update Magic Byte!");
-	    #endif
-	// Update Cursor to The start of the Datablock 
-	if(WriteControlBlockByte(FRAM_CURSOR_MSB, (_cursor_ >> 8) & 0xFF) && WriteControlBlockByte(FRAM_CURSOR_LSB, (_cursor_ & 0xFF)) ) {
-	    #ifdef DIAG_FRAM
-	    Serial.print("Updated Cursor to: 0x");Serial.print(FRAM_DATABLOCK_START,HEX);Serial.println("");
-	    #endif
-	} else {
-	    #ifdef DIAG_FRAM 
-	    Serial.print("Failed to Update Cursor!");
-	    #endif             	
-        };
-    } else { 
-	    // Update the Cursor to next available Block
-	    _cursor_ = (ReadControlBlockByte(FRAM_CURSOR_MSB) << 8) | ReadControlBlockByte(FRAM_CURSOR_LSB);
-	}
-};
-uint8_t FRAM::GetProgramState() {
-	return ReadControlBlockByte(FRAM_STATE_BYTE);
-};
-bool FRAM::SetProgramState(uint8_t byte) {
-	return (WriteControlBlockByte(FRAM_STATE_BYTE, byte) == 0);
-};
-uint8_t FRAM::GetErrorCodeByte() {
-	return ReadControlBlockByte(FRAM_ERROR_BYTE);
-};
-bool FRAM::SetErrorCodeByte(uint8_t byte) {
-	return (WriteControlBlockByte(FRAM_ERROR_BYTE,byte) == 0);
-};
-uint16_t FRAM::GetRecordCount() {
-	return ((ReadControlBlockByte(FRAM_RECORD_COUNT_MSB) << 8) | 
-			ReadControlBlockByte(FRAM_RECORD_COUNT_LSB));
-};
-bool WriteDataBlock(DataBlock* block, uint16_t adr) {
-	return true;
+    _cursor_  = 0;  
 }
-// -------- PRIVATE METHODS -------- //
-uint8_t FRAM::ReadControlBlockByte(uint16_t adr) {
-	if (adr >= FRAM_CONTROLBLOCK_START && adr <= (FRAM_CONTROLBLOCK_END)) {
-		return ReadByte(adr);
-	} else {
-		#ifdef DIAG_FRAM
-		Serial.println("Out Of Control Block Bounds READ. Returning 0x0000");
-		return 0x0000;
-		#endif
-	}
-};
-bool FRAM::WriteControlBlockByte(uint16_t adr, uint8_t byte) {
-	if (adr >= FRAM_CONTROLBLOCK_START && adr <= (FRAM_CONTROLBLOCK_END)) {
-		return _WriteByte_(adr,byte) == 0; // successful write to control block
-	} else {
-		#ifdef DIAG_FRAM
-		Serial.println("Out Of Control Block Bounds WRITE. Returning False");
-		#endif
-		return false;
-	}
-};
-uint8_t FRAM::ReadByte(uint16_t adr) {
-    Wire.beginTransmission(_address_);
-    // Que Start
-    Wire.write((adr >> 8) & 0xFF); // High Byte
-    Wire.write(adr & 0xFF); // Low Byte
-    // Que End
-    Wire.endTransmission(false); // Send Request Keep Bus Active (Send Restart)
-    Wire.requestFrom(_address_,1U); // Request 1 Byte
-    if (Wire.available()) { // Read Byte from buffer
-        uint8_t data = Wire.read();
-        #ifdef DIAG_FRAM
-	Serial.print("Read: 0x");
-	Serial.print(data,HEX);
-	Serial.print(" From Address: 0x");
-	Serial.print(adr);Serial.println("");
-	#endif
-        return data;
+
+FRAM::~FRAM() { 
+	Wire.end(); 
+}
+
+void FRAM::begin() {
+    Wire.begin(ESP_SDA_PIN, ESP_SCL_PIN);
+    Wire.setClock(_clock_);
+    if (ReadControlBlockByte(FRAM_MAGIC_BYTE) != FRAM_MAGIC_VAL) {
+	// Fresh boot initialize the control block
+        WriteControlBlockByte(FRAM_MAGIC_BYTE, FRAM_MAGIC_VAL);
+        WriteControlBlockByte(FRAM_CURSOR_MSB, 0);
+        WriteControlBlockByte(FRAM_CURSOR_LSB, 0);
+        WriteControlBlockByte(FRAM_RECORD_COUNT_MSB, 0);
+        WriteControlBlockByte(FRAM_RECORD_COUNT_LSB, 0);
+        WriteControlBlockByte(FRAM_FULL_BYTE, 0);
+        WriteControlBlockByte(FRAM_ERROR_BYTE, 0);
+	WriteControlBlockByte(FRAM_PROGRAMSTATE_BYTE, 0); // uninit
+        _cursor_ = 0;
+#ifdef DIAG_FRAM
+        Serial.println("FRAM initialized fresh");
+#endif
     } else {
-	#ifdef DIAG_FRAM
-	Serial.println("No Available Data, Returning 0");
-	#endif
-        return 0x0000;
+        _cursor_ = (ReadControlBlockByte(FRAM_CURSOR_MSB) << 8) |  ReadControlBlockByte(FRAM_CURSOR_LSB);
+//#ifdef DIAG_FRAM
+//        Serial.print("FRAM resumed at block index ");
+//        Serial.println(_cursor_);
+//#endif
     }
-};
-bool FRAM::_WriteByte_(uint16_t adr, uint8_t byte) {
+}
+
+bool FRAM::WriteDataBlock(const DataBlock* block) {
+    if (_cursor_ >= FRAM_MAX_RECORD) {
+        SetErrorCodeByte(0x01);
+        WriteControlBlockByte(FRAM_FULL_BYTE, 1);
+        return false;
+    }
+    uint16_t addr = BlockIndexToAddr(_cursor_);
+    if (!WriteBytes(addr, reinterpret_cast<const uint8_t*>(block), FRAM_DATABLOCK_SIZE)) {
+        SetErrorCodeByte(0x02);
+        return false;
+    }
+    _cursor_++;
+    if (!PersistCursor()) {
+	    return false;
+    }
+    if (!PersistRecordCount(_cursor_)) {
+	    return false;
+    }
+    return true;
+}
+void FRAM::DumpDataBytes() {
+	uint16_t rec = GetRecordCount();
+	uint8_t buff[FRAM_DATABLOCK_SIZE];
+	// Dump ALLDataBlocks
+	for (uint16_t i = 0; i < rec; ++i) {
+		if (!ReadBytes(BlockIndexToAddr(i), &buff[0], FRAM_DATABLOCK_SIZE)) {
+#ifdef DIAG_FRAM
+			Serial.print("Read Failed at Record ");
+			Serial.println(i);
+#endif
+			continue;
+		}
+		
+		//Serial.print(i);
+		//Serial.print(": ");
+		for (size_t b = 0; b < FRAM_DATABLOCK_SIZE; ++b) {
+		    if (buff[b] < 0x10) Serial.print('0');  // leading zero
+		    Serial.print(buff[b], HEX);
+		    Serial.print(' ');
+		}
+		Serial.println();
+    	}
+}
+void FRAM::DumpControlBlock() {
+    uint8_t buff[FRAM_CONTROLBLOCK_SIZE];
+
+    if (!ReadBytes(FRAM_CONTROLBLOCK_START, buff, FRAM_CONTROLBLOCK_SIZE)) {
+        Serial.println(F("Read failed for control block"));
+        return;
+    }
+
+    for (size_t b = 0; b < FRAM_CONTROLBLOCK_SIZE; ++b) {
+        if (buff[b] < 0x10) Serial.print('0');
+        Serial.print(buff[b], HEX);
+        Serial.print(' ');
+    }
+    Serial.println();
+}
+bool FRAM::ReadDataBlock(uint16_t index, DataBlock* out) {
+    if (index >= FRAM_MAX_RECORD || out == nullptr) {
+	    return false;
+    }
+    return ReadBytes(BlockIndexToAddr(index), reinterpret_cast<uint8_t*>(out), FRAM_DATABLOCK_SIZE);
+}
+
+bool FRAM::WriteBytes(uint16_t addr, const uint8_t* data, size_t len) {
     Wire.beginTransmission(_address_);
-    // Queue Start
-    Wire.write((adr >> 8) & 0xFF); // High Byte of memory address
-    Wire.write(adr & 0xFF); // Write Low Byte of memory address
-    Wire.write(byte); // data
-    // Queue End
-    int result = Wire.endTransmission(); // SEND TO MB85RC256V
-    if (adr >= FRAM_DATABLOCK_START && adr <= FRAM_DATABLOCK_END) {
-	    _cursor_ = adr + 1; //increment the cursor to the next Data Block
-	    if(RawByteWrite(FRAM_CURSOR_MSB, (_cursor_ >> 8) & 0xFF) && RawByteWrite(FRAM_CURSOR_LSB, (_cursor_ & 0xFF))) {
-		#ifdef DIAG_FRAM
-		Serial.print("Updated Cursor to: 0x");Serial.print(_cursor_,HEX);Serial.println("");
-		#endif
-	    } else {
-		#ifdef DIAG_FRAM 
-	        Serial.print("Failed to Update Cursor!");
-		#endif
-	    }
-    } else { //Write to Control Block
-	    #ifdef DIAG_FRAM
-	    Serial.print("Result: ");Serial.print(result);Serial.print(" Wrote: 0x");Serial.print(byte,HEX);Serial.print(" To ADR: 0x" ); Serial.print(adr); Serial.println("");
-	    #endif
+    Wire.write((addr >> 8) & 0xFF);
+    Wire.write( addr       & 0xFF);
+    for (size_t i = 0; i < len; ++i) {
+	    Wire.write(data[i]);
+    }
+    return Wire.endTransmission() == 0;
+}
+
+bool FRAM::ReadBytes(uint16_t addr, uint8_t* out, size_t len) {
+    Wire.beginTransmission(_address_);
+    Wire.write((addr >> 8) & 0xFF);
+    Wire.write( addr       & 0xFF);
+    if (Wire.endTransmission(false) != 0) {
+	    return false;
+    }
+    size_t got = Wire.requestFrom(_address_, (uint8_t)len);
+    if (got != len) {
+	    return false;
+    }
+    for (size_t i = 0; i < len; ++i){
+	    out[i] = Wire.read();
+    }
+    return true;
+}
+
+bool FRAM::PersistCursor() {
+    return WriteControlBlockByte(FRAM_CURSOR_MSB, (_cursor_ >> 8) & 0xFF) && WriteControlBlockByte(FRAM_CURSOR_LSB,  _cursor_ & 0xFF);
+}
+
+bool FRAM::PersistRecordCount(uint16_t count) {
+    return WriteControlBlockByte(FRAM_RECORD_COUNT_MSB, (count >> 8) & 0xFF) && WriteControlBlockByte(FRAM_RECORD_COUNT_LSB, count & 0xFF);
+}
+
+uint8_t FRAM::ReadControlBlockByte(uint16_t addr) {
+    if (addr > FRAM_CONTROLBLOCK_END) {
+	    return 0; // This might come back to bite me :*(
     };
-    return (result == 0);
-};
-bool FRAM::WriteByte(uint8_t byte) {
-	return _WriteByte_(_cursor_,byte);
-};
-bool FRAM::RawByteWrite(uint16_t adr, uint8_t byte) {
-    Wire.beginTransmission(_address_);
-    // Queue Start
-    Wire.write((adr >> 8) & 0xFF); // High Byte of memory address
-    Wire.write(adr & 0xFF); // Write Low Byte of memory address
-    Wire.write(byte); // data
-    // Queue End
-    return (Wire.endTransmission() == 0); // SEND TO MB85RC256V
-};
+    uint8_t b = 0;
+    ReadBytes(addr, &b, 1);
+    return b;
+}
+
+bool FRAM::WriteControlBlockByte(uint16_t addr, uint8_t byte) {
+    if (addr > FRAM_CONTROLBLOCK_END) {
+	    return false;
+    };
+    return WriteBytes(addr, &byte, 1);
+}
+void ResetFram() {
+	Serial.print("Need to do.");
+}
+// ---- TESTING / SANITY METHODS ---- //
+void FRAM::controlBlockSanityTest() {
+	
+	}
+// ---- PUBLIC CONTROL BLOCK ACCESS ---- //
+uint8_t FRAM::GetProgramState() { 
+	return ReadControlBlockByte(FRAM_PROGRAMSTATE_BYTE); 
+}
+bool FRAM::SetProgramState(uint8_t b) { 
+	return WriteControlBlockByte(FRAM_PROGRAMSTATE_BYTE, b); 
+}
+uint8_t FRAM::GetErrorCodeByte() { 
+	return ReadControlBlockByte(FRAM_ERROR_BYTE); 
+}
+bool FRAM::SetErrorCodeByte(uint8_t b) { 
+	return WriteControlBlockByte(FRAM_ERROR_BYTE, b); 
+}
+bool FRAM::IsFull() { 
+	return ReadControlBlockByte(FRAM_FULL_BYTE) != 0; 
+}
+uint16_t FRAM::GetRecordCount() {
+    return (ReadControlBlockByte(FRAM_RECORD_COUNT_MSB) << 8) |  ReadControlBlockByte(FRAM_RECORD_COUNT_LSB);
+}
+// ---- HELPER ---- //
+uint16_t FRAM::BlockIndexToAddr(uint16_t index) {
+	return FRAM_DATABLOCK_START + (index * FRAM_DATABLOCK_SIZE);
+}

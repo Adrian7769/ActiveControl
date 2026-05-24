@@ -1,0 +1,9 @@
+CONTROL BOX SPECS
+
+GOAL: Tell the Rocket To Launch Using an Aggreed upon Launch byte
+
+- Inter-ESP32 Communication Via BLE (Have)
+- 1x 6v Battery (Have)
+- 1x keyswitch (Do Not Have)
+- 1x LCD Screen (Display CountDown) (Have)
+
