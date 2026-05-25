@@ -3,18 +3,15 @@
 
 #include <Arduino.h>
 #include "fram.h"
+#include "faults.h"
+#include <Barometer.h>
+#include <IMU.h>
 
 class Commands {
 public:
-    // Constructor Commands needs a FRAM to operate on
-    Commands(FRAM* fram);
-
-    // Call once from setup() after Fram.begin()
+    Commands(FRAM* fram, IMU* Imu, Barometer* Baro);
     void begin();
-
-    // Call every iteration of loop()
     void tick();
-
     // Runtime setting
     void setEcho(bool on) { _echo = on; }
     bool getEcho() const  { return _echo; }
@@ -22,6 +19,8 @@ public:
 private:
     // Dependencies (not owned)
     FRAM* _fram;
+    IMU* _imu;
+    Barometer* _baro;
 
     // Reader state
     static constexpr size_t CMD_BUFFER_SIZE = 64;
@@ -37,16 +36,17 @@ private:
     // Display helpers
     void printWelcome();
     void printPrompt();
-    const char* stateName(ProgramState s);
-
+    const char* stateName(ProgramState s);  // Fetch State char * for Given ProgramState value
     // Command handlers
     void cmdHelp();
+    void cmdHelpFaults();
+    void cmdSensors();
+    void cmdCal();
     void cmdStatus();
     void cmdDump();
     void cmdClear();
     void cmdArm();
     void cmdDisarm();
-    void cmdClearFault();
     void cmdEcho(const char* arg);
     void cmdUnknown(const char* verb);
 };

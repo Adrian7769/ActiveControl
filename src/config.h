@@ -1,6 +1,7 @@
 
-// Major.Minor.Patch
-constexpr char VERSION[] = "1.0.0";
+constexpr char VERSION[] = "1.0.2";
+constexpr char AUTHOR[] = "Adrian Jimenez";
+constexpr char NAME[] = "IRIS";
 
 // MB85RC256V
 constexpr uint8_t FRAM_ADR = 0x50; //constexpr must be computed at compile time
@@ -10,7 +11,6 @@ constexpr uint8_t FRAM_MAGIC_VAL = 0x45; // 69
 constexpr uint8_t FRAM_DATABLOCK_SIZE = 32; // size of 32 bytes
 constexpr uint8_t FRAM_CONTROLBLOCK_SIZE = 16;
 constexpr uint16_t FRAM_CONTROLBLOCK_START = 0x0000; // Control block start
-						    
 constexpr uint16_t FRAM_CURSOR_MSB = 0x0000; // Cursor LSB
 constexpr uint16_t FRAM_CURSOR_LSB = 0x0001; // Cursor MSB
 constexpr uint16_t FRAM_PROGRAMSTATE_BYTE = 0x0002; // Curent State
@@ -28,6 +28,12 @@ constexpr uint16_t FRAM_DATABLOCK_END = 0x7FFF; // (32,768 bytes)
 constexpr uint8_t ESP_SDA_PIN = 21;
 constexpr uint8_t ESP_SCL_PIN = 22;
 
+// BNO055
+constexpr uint8_t BNO055_ADR = 0x28; 
+
+//BMP280
+constexpr uint8_t BMP280_ADR = 0x76;
+
 // Debug
 #define DIAG_FRAM
-
+#define DIAG_COM

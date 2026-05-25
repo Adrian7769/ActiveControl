@@ -2,9 +2,14 @@
 #include <string.h>
 #include <ctype.h>
 #include "config.h"
-Commands::Commands(FRAM* fram)
-    : _fram(fram), _pos(0), _echo(true)
-{
+#include "faults.h"
+
+Commands::Commands(FRAM* fram, IMU* Imu, Barometer* Baro) {
+    _fram = fram;
+    _baro = Baro;
+    _imu = Imu;
+    _pos = 0;
+    _echo = true;
     _buffer[0] = '\0';
 }
 
@@ -15,76 +20,69 @@ void Commands::begin() {
 
 void Commands::tick() {
     if (readLine()) {
-        dispatch(_buffer);
+        dispatch(&_buffer[0]);
         resetBuffer();
         printPrompt();
     }
 }
-
-// ---------- Reader ----------
-
 bool Commands::readLine() {
     while (Serial.available()) {
         char c = Serial.read();
-
-        // Ignore carriage returns — handles Windows \r\n
         if (c == '\r') continue;
-
-        // Newline = end of command
-        if (c == '\n') {
-            if (_echo) Serial.println();
-            _buffer[_pos] = '\0';
-            return _pos > 0;          // ignore empty lines
+	// Enter
+        if (c == '\n') { // enter
+            if (_echo) {
+		    Serial.println(); // print new line
+	    }
+            _buffer[_pos] = '\0'; // enter null character at _pos
+            return true; 
         }
-
-        // Backspace or DEL
-        if (c == '\b' || c == 127) {
+        if (c == '\b') {
             if (_pos > 0) {
                 _pos--;
-                if (_echo) Serial.print("\b \b");
+                if (_echo) { 
+			Serial.print("\b \b"); // erase character effect
+		}
             }
             continue;
         }
-
-        // Printable character
         if (_pos < CMD_BUFFER_SIZE - 1) {
-            _buffer[_pos++] = c;
+            _buffer[_pos++] = c; // equivalent to: _buffer[_pos] = c; _pos = _pos + 1;
             if (_echo) Serial.write(c);
         }
-        // else: buffer full, drop silently until newline
     }
     return false;
 }
-
 void Commands::resetBuffer() {
     _pos = 0;
     _buffer[0] = '\0';
 }
-
-// ---------- Dispatch ----------
-
 void Commands::dispatch(char* line) {
-    // Split into verb + remaining args
     char* verb = strtok(line, " \t");
-    char* arg  = strtok(nullptr, "");      // everything after the first space
+    char* arg  = strtok(nullptr, "");
 
     if (verb == nullptr) return;
-
-    // Trim leading whitespace from arg if present
     while (arg && *arg == ' ') arg++;
 
-    if      (strcasecmp(verb, "STATUS")      == 0) cmdStatus();
-    else if (strcasecmp(verb, "HELP")        == 0) cmdHelp();
-    else if (strcasecmp(verb, "?")           == 0) cmdHelp();
-    else if (strcasecmp(verb, "DUMP")        == 0) cmdDump();
-    else if (strcasecmp(verb, "CLEAR")       == 0) cmdClear();
-    else if (strcasecmp(verb, "ARM")         == 0) cmdArm();
-    else if (strcasecmp(verb, "DISARM")      == 0) cmdDisarm();
-    else if (strcasecmp(verb, "CLEAR_FAULT") == 0) cmdClearFault();
-    else if (strcasecmp(verb, "ECHO")        == 0) cmdEcho(arg);
-    else                                           cmdUnknown(verb);
+    if (strcasecmp(verb, "STATUS") == 0) {
+	    cmdStatus();
+    }
+    else if (strcasecmp(verb, "HELP")   == 0) {
+        if (arg != nullptr && strcasecmp(arg, "FAULT") == 0) {
+		cmdHelpFaults();
+	}
+        else cmdHelp();
+    }
+    else if (strcasecmp(verb, "SENSORS") == 0) cmdSensors();
+    else if (strcasecmp(verb, "CALIBRATE")     == 0) cmdCal();   
+    else if (strcasecmp(verb, "?")      == 0) cmdHelp();
+    else if (strcasecmp(verb, "DUMP")   == 0) cmdDump();
+    else if (strcasecmp(verb, "CLEAR")  == 0) cmdClear();
+    else if (strcasecmp(verb, "ARM")    == 0) cmdArm();
+    else if (strcasecmp(verb, "DISARM") == 0) cmdDisarm();
+    else if (strcasecmp(verb, "ECHO")   == 0) cmdEcho(arg);
+    else cmdUnknown(verb);
 }
-
 // ---------- Display helpers ----------
 
 void Commands::printWelcome() {
@@ -108,33 +106,148 @@ void Commands::printPrompt() {
 
 const char* Commands::stateName(ProgramState s) {
     switch (s) {
-        case ProgramState::UNINITIALIZED: return "UNINIT";
-        case ProgramState::IDLE:          return "IDLE";
-        case ProgramState::FAULT:         return "FAULT";
-        case ProgramState::ARMED:         return "ARMED";
-        case ProgramState::ASCENT:        return "ASCENT";
-        case ProgramState::APOGEE:        return "APOGEE";
-        case ProgramState::DESCENT:       return "DESCENT";
-        case ProgramState::LANDED:        return "LANDED";
-        case ProgramState::POST_FLIGHT:   return "POST_FLIGHT";
-        default:                          return "???";
+        case ProgramState::UNINITIALIZED: 
+		return "UNINIT";
+        case ProgramState::IDLE:          
+		return "IDLE";
+        case ProgramState::FAULT:         
+		return "FAULT";
+        case ProgramState::ARMED:         
+		return "ARMED";
+        case ProgramState::ASCENT:        
+		return "ASCENT";
+        case ProgramState::APOGEE:        
+		return "APOGEE";
+        case ProgramState::DESCENT:       
+		return "DESCENT";
+        case ProgramState::LANDED:        
+		return "LANDED";
+        case ProgramState::POST_FLIGHT:   
+		return "POST_FLIGHT";
+        default:                          
+		return "N/A";
     }
 }
-
+	
 // ---------- Command handlers ----------
+
+void Commands::cmdCal() {
+    if (_imu == nullptr) {
+        Serial.println(F("ERR: imu pointer not wired"));
+        return;
+    }
+    if (!_imu->isHealthy()) {
+        Serial.println(F("ERR: IMU not healthy"));
+        return;
+    }
+    
+    CalibrationStatus c = _imu->getCalibration();
+    Serial.println(F("--- BNO055 CALIBRATION ---"));
+    Serial.print(F("System: ")); Serial.print(c.system); Serial.println(F("/3"));
+    Serial.print(F("Gyro:   ")); Serial.print(c.gyro);   Serial.println(F("/3"));
+    Serial.print(F("Accel: "));  Serial.print(c.accel);  Serial.println(F("/3"));
+    Serial.print(F("Mag:    ")); Serial.print(c.mag);    Serial.println(F("/3"));
+    Serial.println(F("Move the rocket through all orientations to calibrate."));
+    Serial.println(F("--------------------------"));
+}
+
+void Commands::cmdSensors() {
+    if (_baro == nullptr || _imu == nullptr) {
+        Serial.println(F("ERR: sensor pointers not wired"));
+        return;
+    }
+    
+    Serial.println(F("--- SENSORS ---"));
+    Serial.print(F("Baro: "));
+    if (_baro->isHealthy()) {
+        Serial.print(_baro->getPressurePa(), 1); Serial.print(F(" Pa, "));
+        Serial.print(_baro->getTemperatureC(), 2); Serial.print(F(" C, "));
+        Serial.print(_baro->getAltitudeM(), 2); Serial.println(F(" m"));
+    } else {
+        Serial.print(F("FAULT 0x")); Serial.println(_baro->getLastFault(), HEX);
+    }
+    
+    Serial.print(F("IMU:  "));
+    if (_imu->isHealthy()) {
+        Orientation o = _imu->getOrientation();
+        Quaternion  q = _imu->getQuaternion();
+        Vec3        a = _imu->getLinearAccel();
+        Vec3        g = _imu->getGravityVector();
+        Serial.print(F("Eul: ")); 
+        Serial.print(o.heading, 1); Serial.print(F(" "));
+        Serial.print(o.roll, 1);    Serial.print(F(" "));
+        Serial.println(o.pitch, 1);
+        Serial.print(F("Qua: "));
+        Serial.print(q.w, 3); Serial.print(F(" "));
+        Serial.print(q.x, 3); Serial.print(F(" "));
+        Serial.print(q.y, 3); Serial.print(F(" "));
+        Serial.println(q.z, 3);
+        Serial.print(F("LinAcc: "));
+        Serial.print(a.x, 1); Serial.print(F(","));
+        Serial.print(a.y, 1); Serial.print(F(","));
+        Serial.println(a.z, 1);
+        Serial.print(F("Grav: "));
+        Serial.print(g.x, 1); Serial.print(F(","));
+        Serial.print(g.y, 1); Serial.print(F(","));
+        Serial.println(g.z, 1);;
+    } else {
+        Serial.print(F("FAULT 0x")); Serial.println(_imu->getLastFault(), HEX);
+    }
+    Serial.println(F("---------------"));
+}
 
 void Commands::cmdHelp() {
     Serial.println(F("Available commands:"));
     Serial.println(F("  STATUS         - show current state and counters"));
     Serial.println(F("  HELP / ?       - this list"));
+    Serial.println(F("  HELP FAULT     - list fault codes"));
+    Serial.println(F("  SENSORS        - sensor test"));
+    Serial.println(F("  CALIBRATE      - calibrate BNO055"));
     Serial.println(F("  DUMP           - dump all FRAM records"));
     Serial.println(F("  CLEAR          - erase all records (POST_FLIGHT only)"));
     Serial.println(F("  ARM            - IDLE -> ARMED"));
     Serial.println(F("  DISARM         - ARMED -> IDLE"));
-    Serial.println(F("  CLEAR_FAULT    - FAULT -> IDLE"));
     Serial.println(F("  ECHO on|off    - toggle character echo"));
 }
 
+void Commands::cmdHelpFaults() {
+    Serial.println(F("--- FAULT CODES ---"));
+    Serial.println(F("Code  Name                  Description"));
+    Serial.println(F("----  --------------------  --------------------------------"));
+    
+    for (size_t i = 0; i < FAULT_TABLE_SIZE; ++i) {
+        const FaultEntry& f = FAULT_TABLE[i];
+        
+        Serial.print(F("0x"));
+        if (f.code < 0x10) Serial.print('0');
+        Serial.print(f.code, HEX);
+        Serial.print(F("  "));
+        
+        // Left-pad the name to 20 chars for alignment
+        Serial.print(f.name);
+        for (size_t pad = strlen(f.name); pad < 20; ++pad) Serial.print(' ');
+        
+        Serial.print(F("  "));
+        Serial.println(f.description);
+    }
+    
+    Serial.println(F("-------------------"));
+    
+    // Show current error byte for context
+    uint8_t current = _fram->GetErrorCodeByte();
+    Serial.print(F("Current error code: 0x"));
+    if (current < 0x10) Serial.print('0');
+    Serial.print(current, HEX);
+    
+    const FaultEntry* entry = lookupFault(current);
+    if (entry) {
+        Serial.print(F("  ("));
+        Serial.print(entry->name);
+        Serial.println(F(")"));
+    } else {
+        Serial.println(F("  (unknown)"));
+    }
+}
 void Commands::cmdStatus() {
     Serial.println(F("--- STATUS ---"));
     Serial.print(F("State:        "));
@@ -154,8 +267,8 @@ void Commands::cmdStatus() {
 
 void Commands::cmdDump() {
     Serial.println(F("Dumping all records:"));
-    _fram->DumpControlBlock();
-    _fram->DumpDataBytes();
+    _fram->DumpControlBlock(); // Control Block
+    _fram->DumpDataBytes(); // All datablocks
     Serial.println(F("Dump complete."));
 }
 
@@ -173,6 +286,10 @@ void Commands::cmdClear() {
 }
 
 void Commands::cmdArm() {
+    if (_fram->GetErrorCodeByte() != 0x00) {
+	Serial.println(F("ERR: Unable to ARM from FAULT."));
+	return;
+    }
     if (_fram->GetProgramState() != static_cast<uint8_t>(ProgramState::IDLE)) {
         Serial.println(F("ERR: ARM only allowed from IDLE"));
         return;
@@ -188,16 +305,6 @@ void Commands::cmdDisarm() {
     }
     _fram->SetProgramState(static_cast<uint8_t>(ProgramState::IDLE));
     Serial.println(F("Disarmed. Returning to IDLE."));
-}
-
-void Commands::cmdClearFault() {
-    if (_fram->GetProgramState() != static_cast<uint8_t>(ProgramState::FAULT)) {
-        Serial.println(F("ERR: CLEAR_FAULT only allowed from FAULT"));
-        return;
-    }
-    _fram->SetErrorCodeByte(0);
-    _fram->SetProgramState(static_cast<uint8_t>(ProgramState::IDLE));
-    Serial.println(F("Fault cleared. Returning to IDLE."));
 }
 
 void Commands::cmdEcho(const char* arg) {

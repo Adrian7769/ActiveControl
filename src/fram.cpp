@@ -1,6 +1,6 @@
 #include "fram.h"
 #include "config.h"
-
+#include "faults.h"
 FRAM::FRAM() {
     _clock_   = FRAM_CLOCK;
     _address_ = FRAM_ADR;
@@ -24,7 +24,7 @@ void FRAM::begin() {
         WriteControlBlockByte(FRAM_FULL_BYTE, 0);
         WriteControlBlockByte(FRAM_ERROR_BYTE, 0);
 	WriteControlBlockByte(FRAM_PROGRAMSTATE_BYTE, 0); // uninit
-        _cursor_ = 0;
+     _cursor_ = 0;
 #ifdef DIAG_FRAM
         Serial.println("FRAM initialized fresh");
 #endif
@@ -38,14 +38,15 @@ void FRAM::begin() {
 }
 
 bool FRAM::WriteDataBlock(const DataBlock* block) {
-    if (_cursor_ >= FRAM_MAX_RECORD) {
-        SetErrorCodeByte(0x01);
-        WriteControlBlockByte(FRAM_FULL_BYTE, 1);
+    if (_cursor_ >= (uint16_t)(FRAM_MAX_RECORD * 0.90)) { // approximatly Record 920 would trigger a FAULT
+        SetErrorCodeByte(FAULT_FRAM_FULL);
+        WriteControlBlockByte(FRAM_FULL_BYTE, 1); 
+	WriteControlBlockByte(FRAM_PROGRAMSTATE_BYTE,static_cast<uint8_t>(ProgramState::FAULT));
         return false;
     }
     uint16_t addr = BlockIndexToAddr(_cursor_);
     if (!WriteBytes(addr, reinterpret_cast<const uint8_t*>(block), FRAM_DATABLOCK_SIZE)) {
-        SetErrorCodeByte(0x02);
+        SetErrorCodeByte(FAULT_FRAM_WRITE);
         return false;
     }
     _cursor_++;
@@ -157,8 +158,9 @@ void ResetFram() {
 }
 // ---- TESTING / SANITY METHODS ---- //
 void FRAM::controlBlockSanityTest() {
-	
 	}
+void FRAM::overFlowTest() {
+}
 // ---- PUBLIC CONTROL BLOCK ACCESS ---- //
 uint8_t FRAM::GetProgramState() { 
 	return ReadControlBlockByte(FRAM_PROGRAMSTATE_BYTE); 
