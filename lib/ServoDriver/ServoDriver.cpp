@@ -35,13 +35,12 @@ void ServoDriver::tick() {
 void ServoDriver::setAngle(uint8_t index, float degrees) {
     if (!_healthy || index >= SERVO_COUNT) return;
 
-    if (degrees < 0.0f)   degrees = 0.0f;
+    if (degrees < 0.0f) degrees = 0.0f;
     if (degrees > 180.0f) degrees = 180.0f;
 
     _state.angle[index] = degrees;
 
-    int us = (int)(PULSE_MIN_US +
-             (degrees / 180.0f) * (PULSE_MAX_US - PULSE_MIN_US));
+    int us = (int)(PULSE_MIN_US + (degrees / 180.0f) * (PULSE_MAX_US - PULSE_MIN_US));
     _servo[index].writeMicroseconds(us);
 }
 
