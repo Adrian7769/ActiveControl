@@ -23,11 +23,9 @@ void Guidance::begin(const GuidanceConfig& cfg) {
 void Guidance::tick() {
     if (!_enabled) return;
     if (!_imu->isHealthy() || !_servos->isHealthy()) return;
-
     unsigned long now = micros();
     unsigned long elapsed = now - _last_tick_us;
     if (elapsed < TICK_INTERVAL_US) return;
-
     float dt = elapsed / 1e6f;
     _last_tick_us = now;
 
@@ -56,12 +54,10 @@ void Guidance::computeErrors(const Quaternion& q,
     // q_error = q_ref * conj(q_current)
     // Quaternion multiplication:
     // (a.w + a.xi + a.yj + a.zk)(b.w + b.xi + b.yj + b.zk)
-
     float cw =  q.w;   // conjugate of current
     float cx = -q.x;
     float cy = -q.y;
     float cz = -q.z;
-
     // q_error = q_ref * conjugate(q_current)
     float ew = _q_ref.w*cw - _q_ref.x*cx - _q_ref.y*cy - _q_ref.z*cz;
     float ex = _q_ref.w*cx + _q_ref.x*cw + _q_ref.y*cz - _q_ref.z*cy;
@@ -74,12 +70,11 @@ void Guidance::computeErrors(const Quaternion& q,
     yaw_err   = 2.0f * ey * RAD2DEG;
     roll_err  = 2.0f * ez * RAD2DEG;
 }
-
 void Guidance::mixFins(float pitch_cmd, float yaw_cmd, float roll_cmd) {
     float p = pitch_cmd * _max_defl;
     float y = yaw_cmd   * _max_defl;
     float r = roll_cmd  * _max_defl;
-
+    // Up roll +, Left Yaw +, Forward Pitch +
     //         Fin 0
     //           |
     //  Fin 3 ---+--- Fin 1
@@ -88,15 +83,12 @@ void Guidance::mixFins(float pitch_cmd, float yaw_cmd, float roll_cmd) {
     // Fin 0 (top)    and Fin 2 (bottom) control PITCH only.
     // Fin 1 (right)  and Fin 3 (left)   control YAW only.
     // Roll: all four fins deflect in the same rotational sense.
-
     float fin0 = 90.0f + p + r;   // top:    pitch
     float fin1 = 90.0f + y + r;   // right:  yaw
     float fin2 = 90.0f - p + r;   // bottom: pitch (opposite)
     float fin3 = 90.0f - y + r;   // left:   yaw (opposite)
-
     _servos->setAll(fin0, fin1, fin2, fin3);
 }
-
 void Guidance::enable() {
     _pid_pitch.reset();
     _pid_yaw.reset();
@@ -118,19 +110,15 @@ void Guidance::disable() {
     _roll_cmd  = 0;
     _servos->center();
 }
-
 void Guidance::setPitchGains(float kp, float ki, float kd) {
     _pid_pitch.setGains(kp, ki, kd);
 }
-
 void Guidance::setYawGains(float kp, float ki, float kd) {
     _pid_yaw.setGains(kp, ki, kd);
 }
-
 void Guidance::setRollGains(float kp, float ki, float kd) {
     _pid_roll.setGains(kp, ki, kd);
 }
-
 void Guidance::setMaxDeflection(float deg) {
     if (deg < 1.0f)  deg = 1.0f;
     if (deg > 45.0f) deg = 45.0f;

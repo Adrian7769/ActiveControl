@@ -9,13 +9,13 @@ struct GuidanceConfig {
     float kp_pitch, ki_pitch, kd_pitch;
     float kp_yaw,   ki_yaw,   kd_yaw;
     float kp_roll,  ki_roll,  kd_roll;
-    float max_deflection;   // max servo deflection from center (degrees)
+    float max_deflection;   
 };
 
 static constexpr GuidanceConfig GUIDANCE_DEFAULTS = {
     0.5f, 0.0f, 0.1f,    // pitch
     0.5f, 0.0f, 0.1f,    // yaw
-    0.3f, 0.0f, 0.05f,   // roll (less aggressive  roll is less critical)
+    0.3f, 0.0f, 0.05f,   // roll 
     15.0f                 // max deflection degrees from center
 };
 
