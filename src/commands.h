@@ -6,10 +6,11 @@
 #include "faults.h"
 #include <Barometer.h>
 #include <IMU.h>
+#include <ServoDriver.h>
 
 class Commands {
 public:
-    Commands(FRAM* fram, IMU* Imu, Barometer* Baro);
+    Commands(FRAM* fram, IMU* Imu, Barometer* Baro, ServoDriver* Servos);
     void begin();
     void tick();
     // Runtime setting
@@ -17,10 +18,12 @@ public:
     bool getEcho() const  { return _echo; }
 
 private:
-    // Dependencies (not owned)
+    // Dependencies
     FRAM* _fram;
     IMU* _imu;
     Barometer* _baro;
+    ServoDriver* _servos;
+
 
     // Reader state
     static constexpr size_t CMD_BUFFER_SIZE = 64;

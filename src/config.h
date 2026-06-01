@@ -1,6 +1,7 @@
-
+#ifndef CONFIG_H
+#define CONFIG_H
 constexpr char VERSION[] = "1.0.2";
-constexpr char AUTHOR[] = "Adrian Jimenez";
+constexpr char AUTHOR[] = "Adrian Jimenez (Frizz)";
 constexpr char NAME[] = "IRIS";
 
 // MB85RC256V
@@ -24,6 +25,7 @@ constexpr uint16_t FRAM_CONTROLBLOCK_END = 0x000F; // 15th Byte
 constexpr uint16_t FRAM_DATABLOCK_START = 0x0010; // 16th byte
 constexpr uint16_t FRAM_DATABLOCK_END = 0x7FFF; // (32,768 bytes)
 // Start writing data upon liftoff -> landing
+
 // ESP32 PIN MAP
 constexpr uint8_t ESP_SDA_PIN = 21;
 constexpr uint8_t ESP_SCL_PIN = 22;
@@ -34,6 +36,20 @@ constexpr uint8_t BNO055_ADR = 0x28;
 //BMP280
 constexpr uint8_t BMP280_ADR = 0x76;
 
+// PCA9685
+constexpr uint8_t PCA9685_ADR = 0x40;
+constexpr float   PCA9685_PWM_FREQ = 50.0f;     // 50 Hz for servos
+constexpr uint16_t SERVO_PULSE_MIN = 150;        // ~1ms pulse (full CCW)
+constexpr uint16_t SERVO_PULSE_MAX = 600;        // ~2ms pulse (full CW)
+constexpr uint8_t  SERVO_COUNT = 4;
+// channel assignments
+constexpr uint8_t SERVO_FIN_1 = 0;
+constexpr uint8_t SERVO_FIN_2 = 1;
+constexpr uint8_t SERVO_FIN_3 = 4;
+constexpr uint8_t SERVO_FIN_4 = 5;
+
 // Debug
 #define DIAG_FRAM
 #define DIAG_COM
+
+#endif

@@ -4,10 +4,11 @@
 #include "config.h"
 #include "faults.h"
 
-Commands::Commands(FRAM* fram, IMU* Imu, Barometer* Baro) {
+Commands::Commands(FRAM* fram, IMU* Imu, Barometer* Baro, ServoDriver* Servos) {
     _fram = fram;
     _baro = Baro;
     _imu = Imu;
+    _servos = Servos;
     _pos = 0;
     _echo = true;
     _buffer[0] = '\0';
@@ -97,7 +98,6 @@ void Commands::printWelcome() {
     Serial.println(F("Type HELP or ? for commands."));
     Serial.println();
 }
-
 void Commands::printPrompt() {
     Serial.print('[');
     Serial.print(stateName(static_cast<ProgramState>(_fram->GetProgramState())));
@@ -131,7 +131,7 @@ const char* Commands::stateName(ProgramState s) {
 	
 // ---------- Command handlers ----------
 
-void Commands::cmdCal() {
+void Commands::cmdCal() 
     if (_imu == nullptr) {
         Serial.println(F("ERR: imu pointer not wired"));
         return;

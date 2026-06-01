@@ -1,6 +1,7 @@
 #include "fram.h"
 #include "config.h"
 #include "faults.h"
+
 FRAM::FRAM() {
     _clock_   = FRAM_CLOCK;
     _address_ = FRAM_ADR;
@@ -12,9 +13,16 @@ FRAM::~FRAM() {
 }
 
 void FRAM::begin() {
-    Wire.begin(ESP_SDA_PIN, ESP_SCL_PIN);
+    delay(100);
     Wire.setClock(_clock_);
-    if (ReadControlBlockByte(FRAM_MAGIC_BYTE) != FRAM_MAGIC_VAL) {
+    uint8_t magic = 0;
+    if (!ReadBytes(FRAM_MAGIC_BYTE, &magic, 1)) {
+#ifdef DIAG_FRAM
+		    Serial.println("FRAM bus not responding, skipping init");
+#endif
+		    return;
+    }
+    if (magic != FRAM_MAGIC_VAL) {
 	// Fresh boot initialize the control block
         WriteControlBlockByte(FRAM_MAGIC_BYTE, FRAM_MAGIC_VAL);
         WriteControlBlockByte(FRAM_CURSOR_MSB, 0);
@@ -30,15 +38,15 @@ void FRAM::begin() {
 #endif
     } else {
         _cursor_ = (ReadControlBlockByte(FRAM_CURSOR_MSB) << 8) |  ReadControlBlockByte(FRAM_CURSOR_LSB);
-//#ifdef DIAG_FRAM
-//        Serial.print("FRAM resumed at block index ");
-//        Serial.println(_cursor_);
-//#endif
+#ifdef DIAG_FRAM
+        Serial.print("FRAM resumed at block index ");
+        Serial.println(_cursor_);
+#endif
     }
 }
 
 bool FRAM::WriteDataBlock(const DataBlock* block) {
-    if (_cursor_ >= (uint16_t)(FRAM_MAX_RECORD * 0.90)) { // approximatly Record 920 would trigger a FAULT
+    if (_cursor_ >= FRAM_MAX_RECORD) {
         SetErrorCodeByte(FAULT_FRAM_FULL);
         WriteControlBlockByte(FRAM_FULL_BYTE, 1); 
 	WriteControlBlockByte(FRAM_PROGRAMSTATE_BYTE,static_cast<uint8_t>(ProgramState::FAULT));
@@ -102,7 +110,6 @@ bool FRAM::ReadDataBlock(uint16_t index, DataBlock* out) {
     }
     return ReadBytes(BlockIndexToAddr(index), reinterpret_cast<uint8_t*>(out), FRAM_DATABLOCK_SIZE);
 }
-
 bool FRAM::WriteBytes(uint16_t addr, const uint8_t* data, size_t len) {
     Wire.beginTransmission(_address_);
     Wire.write((addr >> 8) & 0xFF);
@@ -112,7 +119,6 @@ bool FRAM::WriteBytes(uint16_t addr, const uint8_t* data, size_t len) {
     }
     return Wire.endTransmission() == 0;
 }
-
 bool FRAM::ReadBytes(uint16_t addr, uint8_t* out, size_t len) {
     Wire.beginTransmission(_address_);
     Wire.write((addr >> 8) & 0xFF);
@@ -129,15 +135,12 @@ bool FRAM::ReadBytes(uint16_t addr, uint8_t* out, size_t len) {
     }
     return true;
 }
-
 bool FRAM::PersistCursor() {
     return WriteControlBlockByte(FRAM_CURSOR_MSB, (_cursor_ >> 8) & 0xFF) && WriteControlBlockByte(FRAM_CURSOR_LSB,  _cursor_ & 0xFF);
 }
-
 bool FRAM::PersistRecordCount(uint16_t count) {
     return WriteControlBlockByte(FRAM_RECORD_COUNT_MSB, (count >> 8) & 0xFF) && WriteControlBlockByte(FRAM_RECORD_COUNT_LSB, count & 0xFF);
 }
-
 uint8_t FRAM::ReadControlBlockByte(uint16_t addr) {
     if (addr > FRAM_CONTROLBLOCK_END) {
 	    return 0; // This might come back to bite me :*(
@@ -146,7 +149,6 @@ uint8_t FRAM::ReadControlBlockByte(uint16_t addr) {
     ReadBytes(addr, &b, 1);
     return b;
 }
-
 bool FRAM::WriteControlBlockByte(uint16_t addr, uint8_t byte) {
     if (addr > FRAM_CONTROLBLOCK_END) {
 	    return false;

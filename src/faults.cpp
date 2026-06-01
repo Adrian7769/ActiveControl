@@ -9,6 +9,8 @@ const FaultEntry FAULT_TABLE[] = {
     { FAULT_BMP_TIMEOUT_LOCAL, "BMP_T", "BPM280 timeout"},
     { FAULT_BNO_NOT_FOUND_LOCAL, "BNO_NF", "BNO055 not found"},
     { FAULT_BNO_TIMEOUT_LOCAL, "BNO_T", "BNO055 timeout"}
+    { FAULT_PCA_NOT_FOUND_LOCAL, "PCA_NF", "PCA9685 not found" },
+    { FAULT_PCA_TIMEOUT_LOCAL,   "PCA_T",  "PCA9685 timeout" }
 };
 const size_t FAULT_TABLE_SIZE = sizeof(FAULT_TABLE) / sizeof(FAULT_TABLE[0]);
 

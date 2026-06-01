@@ -6,34 +6,40 @@
 #include "fram.h"
 #include "commands.h"
 #include "faults.h"
-
+#include <ServoDriver.h>
 // ---- Globals ----
 FRAM      Fram;
 IMU       Imu;
 Barometer Baro;
-Commands  Cmd(&Fram, &Imu, &Baro);
+ServoDriver Servos;
+
+Commands  Cmd(&Fram, &Imu, &Baro, &Servos);
+DataBlock Block;
 
 void setup() {
     Serial.begin(115200);
-    delay(2000);
     Wire.begin(ESP_SDA_PIN, ESP_SCL_PIN);
 
     Fram.begin();
 
     uint8_t fault;
-
     fault = Baro.begin();
     if (fault != FAULT_NONE) {
         Fram.SetErrorCodeByte(fault);
         Fram.SetProgramState(static_cast<uint8_t>(ProgramState::FAULT));
         Serial.print(F("Barometer fault: 0x")); Serial.println(fault, HEX);
     }
-
     fault = Imu.begin();
     if (fault != FAULT_NONE) {
         Fram.SetErrorCodeByte(fault);
         Fram.SetProgramState(static_cast<uint8_t>(ProgramState::FAULT));
         Serial.print(F("IMU fault: 0x")); Serial.println(fault, HEX);
+    }
+    fault = Servos.begin();
+    if (fault != FAULT_NONE) {
+	    Fram.setErrorCodeByte(fault);
+	    Fram.SetProgramState(static_cast<uint8_t>(ProgramState::FAULT));
+	    Serial.print(F("Servo fault: 0x")); Serial.println(fault, HEX);
     }
 
     // Initial state logic
@@ -121,6 +127,8 @@ void loop() {
     static unsigned long lastPrint = 0;
     if (millis() - lastPrint > 1000) {
         lastPrint = millis();
-        printSensors();
+	Block.timestamp_ms = millis();
+        //printSensors();
+	Fram.WriteDataBlock(&Block);
     }
 }
