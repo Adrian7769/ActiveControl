@@ -36,17 +36,11 @@ constexpr uint8_t BNO055_ADR = 0x28;
 //BMP280
 constexpr uint8_t BMP280_ADR = 0x76;
 
-// PCA9685
-constexpr uint8_t PCA9685_ADR = 0x40;
-constexpr float   PCA9685_PWM_FREQ = 50.0f;     // 50 Hz for servos
-constexpr uint16_t SERVO_PULSE_MIN = 150;        // ~1ms pulse (full CCW)
-constexpr uint16_t SERVO_PULSE_MAX = 600;        // ~2ms pulse (full CW)
-constexpr uint8_t  SERVO_COUNT = 4;
-// channel assignments
-constexpr uint8_t SERVO_FIN_1 = 0;
-constexpr uint8_t SERVO_FIN_2 = 1;
-constexpr uint8_t SERVO_FIN_3 = 4;
-constexpr uint8_t SERVO_FIN_4 = 5;
+// Servo GPIO pins (ESP32 PWM)
+constexpr uint8_t SERVO_PIN_0 = 25;
+constexpr uint8_t SERVO_PIN_1 = 26;
+constexpr uint8_t SERVO_PIN_2 = 27;
+constexpr uint8_t SERVO_PIN_3 = 14;
 
 // Debug
 #define DIAG_FRAM

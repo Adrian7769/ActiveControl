@@ -4,19 +4,38 @@
 #include <Wire.h>
 
 struct __attribute__((packed)) DataBlock {
-    uint32_t timestamp_ms;
-    uint32_t pressure_pa;
-    float    accel_x;
-    float    accel_y;
-    float    accel_z;
-    int16_t  euler_head;
-    int16_t  euler_roll;
-    int16_t  euler_pitch;
-    int16_t  temp_c_x100;
+    // ---- Time (4 bytes) ----
+    uint32_t timestamp_ms;          // millis()
+    // ---- Barometer (4 bytes) ----
+    uint32_t pressure_pa;           // raw pressure
+    // ---- Quaternion (8 bytes) ----
+    int16_t  qw;                    // scaled: real_value * 16384
+    int16_t  qx;                    // (BNO055 native scaling, no precision loss)
+    int16_t  qy;
+    int16_t  qz;
+    // ---- Linear acceleration (6 bytes) ----
+    int16_t  accel_x;               // milli-g (mg)
+    int16_t  accel_y;
+    int16_t  accel_z;
+    // ---- Guidance outputs (3 bytes) ----
+    int8_t   pid_pitch;             // -100 to +100 (normalized * 100)
+    int8_t   pid_yaw;
+    int8_t   pid_roll;
+    // ---- Fin positions (4 bytes) ----
+    uint8_t  fin_0;                 // degrees 0-180
+    uint8_t  fin_1;
+    uint8_t  fin_2;
+    uint8_t  fin_3;
+    // ---- System (2 bytes) ----
     uint8_t  flight_state;
     uint8_t  flags;
-    uint8_t  crc;
-    uint8_t  reserved;
+    //        bit 0: guidance enabled
+    //        bit 1: FRAM >90% full
+    //        bit 2: IMU unhealthy
+    //        bit 3: baro unhealthy
+    //        bit 4: servo unhealthy
+    //        bits 5-7: reserved
+    uint8_t  _reserved;             
 };
 
 enum class ProgramState : uint8_t {

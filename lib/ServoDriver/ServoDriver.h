@@ -1,10 +1,13 @@
 #ifndef SERVODRIVER_H
 #define SERVODRIVER_H
 
-#include <Adafruit_PWMServoDriver.h>
+#include <Arduino.h>
+#include <ESP32Servo.h>
+
+static constexpr uint8_t SERVO_COUNT = 4;
 
 struct ServoState {
-    float angle[4];  // current angle 0-180 for each servo
+    float angle[SERVO_COUNT];
 };
 
 class ServoDriver {
@@ -13,13 +16,8 @@ public:
     uint8_t begin();
     void tick();
 
-    // Set a single servo angle (0.0 – 180.0)
     void setAngle(uint8_t index, float degrees);
-
-    // Set all four simultaneously
     void setAll(float d0, float d1, float d2, float d3);
-
-    // Center all servos to 90 degrees
     void center();
 
     ServoState getState() const { return _state; }
@@ -27,15 +25,16 @@ public:
     uint8_t getLastFault() const { return _last_fault; }
 
 private:
-    Adafruit_PWMServoDriver _pca;
+    Servo _servo[SERVO_COUNT];
     ServoState _state;
     bool    _healthy;
     uint8_t _last_fault;
 
-    // Maps channel index (0-3) to actual PCA9685 channel
-    uint8_t _channel_map[4];
-
-    uint16_t angleToPulse(float degrees);
+    // ESP32 GPIO pins
+    static constexpr uint8_t SERVO_PINS[SERVO_COUNT] = { 25, 26, 27, 14 };
+    static constexpr int PULSE_MIN_US = 1000;  // 0 degrees
+    static constexpr int PULSE_MAX_US = 2000;  // 180 degrees
+    static constexpr int PWM_HZ       = 50;
 };
 
 #endif
