@@ -7,42 +7,192 @@
 #include "commands.h"
 #include "faults.h"
 #include <ServoDriver.h>
-// ---- Globals ----
-FRAM      Fram;
-IMU       Imu;
-Barometer Baro;
-ServoDriver Servos;
+#include "Guidance.h"
 
-Commands  Cmd(&Fram, &Imu, &Baro, &Servos);
-DataBlock Block;
+// ---- Globals ----
+FRAM        Fram;
+IMU         Imu;
+Barometer   Baro;
+ServoDriver Servos;
+Guidance    Guide(&Imu, &Servos);
+Commands    Cmd(&Fram, &Imu, &Baro, &Servos, &Guide);
+DataBlock   Block;
+
+// ---- Launch / Apogee detection thresholds ----
+static constexpr float  LAUNCH_ACCEL_MG      = 3000.0f;  // 3G in milli-g
+static constexpr unsigned long LAUNCH_HOLD_MS = 100;      // sustained for 100ms
+static constexpr unsigned long APOGEE_HOLD_MS = 500;      // altitude falling for 500ms
+
+// ---- Launch detection state ----
+static unsigned long launchAccelStart = 0;
+static bool          launchDetected   = false;
+
+// ---- Apogee detection state ----
+static float         peakAltitude     = -9999.0f;
+static unsigned long altFallingStart  = 0;
+
+// ---- Logging rate ----
+static constexpr unsigned long LOG_INTERVAL_MS = 100;  // 10 Hz
+
+// ======== Data packing ========
+void packDataBlock() {
+    Block.timestamp_ms = millis();
+
+    Block.pressure_pa = Baro.isHealthy() ? (uint32_t)Baro.getPressurePa() : 0;
+
+    Quaternion q = Imu.getQuaternion();
+    Block.qw = (int16_t)(q.w * 16384.0f);
+    Block.qx = (int16_t)(q.x * 16384.0f);
+    Block.qy = (int16_t)(q.y * 16384.0f);
+    Block.qz = (int16_t)(q.z * 16384.0f);
+
+    Vec3 a = Imu.getLinearAccel();
+    Block.accel_x = (int16_t)a.x;
+    Block.accel_y = (int16_t)a.y;
+    Block.accel_z = (int16_t)a.z;
+
+    Block.pid_pitch = (int8_t)(Guide.getPitchCmd() * 100.0f);
+    Block.pid_yaw   = (int8_t)(Guide.getYawCmd()   * 100.0f);
+    Block.pid_roll  = (int8_t)(Guide.getRollCmd()   * 100.0f);
+
+    ServoState s = Servos.getState();
+    Block.fin_0 = (uint8_t)s.angle[0];
+    Block.fin_1 = (uint8_t)s.angle[1];
+    Block.fin_2 = (uint8_t)s.angle[2];
+    Block.fin_3 = (uint8_t)s.angle[3];
+
+    Block.flight_state = Fram.GetProgramState();
+
+    Block.flags = 0;
+    if (Guide.isEnabled())      Block.flags |= (1 << 0);
+    if (Fram.IsFull())          Block.flags |= (1 << 1);
+    if (!Imu.isHealthy())       Block.flags |= (1 << 2);
+    if (!Baro.isHealthy())      Block.flags |= (1 << 3);
+    if (!Servos.isHealthy())    Block.flags |= (1 << 4);
+
+    Block._reserved = 0;
+}
+
+// Detect launch: sustained high acceleration along rocket body axis
+bool checkLaunchDetected() {
+    Vec3 a = Imu.getLinearAccel();
+    float accel_mag = sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+    
+    if (accel_mag >= LAUNCH_ACCEL_MG) {
+        if (launchAccelStart == 0) {
+            launchAccelStart = millis();
+        } else if (millis() - launchAccelStart >= LAUNCH_HOLD_MS) {
+            return true;
+        }
+    } else {
+        launchAccelStart = 0;  // reset must be sustained
+    }
+    return false;
+}
+
+// Detect apogee: altitude has been falling for APOGEE_HOLD_MS
+bool checkApogeeDetected() {
+    if (!Baro.isHealthy()) return false;
+
+    float alt = Baro.getAltitudeM();
+    if (alt > peakAltitude) {
+        peakAltitude = alt;
+        altFallingStart = 0;
+    } else {
+        if (altFallingStart == 0) {
+            altFallingStart = millis();
+        } else if (millis() - altFallingStart >= APOGEE_HOLD_MS) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void updateStateMachine() {
+    uint8_t state = Fram.GetProgramState();
+
+    switch (static_cast<ProgramState>(state)) {
+
+        case ProgramState::ARMED:
+            if (checkLaunchDetected()) {
+                Fram.SetProgramState(static_cast<uint8_t>(ProgramState::ASCENT));
+                Guide.enable();
+                peakAltitude = Baro.getAltitudeM();
+                launchDetected = true;
+#ifdef DIAG_COM
+                Serial.println(F("LAUNCH DETECTED — ASCENT"));
+#endif
+            }
+            break;
+
+        case ProgramState::ASCENT:
+            if (checkApogeeDetected()) {
+                Fram.SetProgramState(static_cast<uint8_t>(ProgramState::APOGEE));
+                Guide.disable();
+#ifdef DIAG_COM
+                Serial.println(F("APOGEE DETECTED"));
+#endif
+            }
+            break;
+
+        case ProgramState::APOGEE:
+            Fram.SetProgramState(static_cast<uint8_t>(ProgramState::DESCENT));
+            break;
+
+        case ProgramState::DESCENT:
+            break;
+
+        default:
+            break;
+    }
+}
 
 void setup() {
     Serial.begin(115200);
+    delay(100);  
     Wire.begin(ESP_SDA_PIN, ESP_SCL_PIN);
+    Wire.setClock(400000);  // 400 kHz 
 
     Fram.begin();
 
     uint8_t fault;
+
     fault = Baro.begin();
     if (fault != FAULT_NONE) {
         Fram.SetErrorCodeByte(fault);
         Fram.SetProgramState(static_cast<uint8_t>(ProgramState::FAULT));
         Serial.print(F("Barometer fault: 0x")); Serial.println(fault, HEX);
     }
+
     fault = Imu.begin();
     if (fault != FAULT_NONE) {
         Fram.SetErrorCodeByte(fault);
         Fram.SetProgramState(static_cast<uint8_t>(ProgramState::FAULT));
         Serial.print(F("IMU fault: 0x")); Serial.println(fault, HEX);
     }
+
     fault = Servos.begin();
     if (fault != FAULT_NONE) {
-	    Fram.setErrorCodeByte(fault);
-	    Fram.SetProgramState(static_cast<uint8_t>(ProgramState::FAULT));
-	    Serial.print(F("Servo fault: 0x")); Serial.println(fault, HEX);
+        Fram.SetErrorCodeByte(fault);
+        Fram.SetProgramState(static_cast<uint8_t>(ProgramState::FAULT));
+        Serial.print(F("Servo fault: 0x")); Serial.println(fault, HEX);
     }
 
-    // Initial state logic
+    Guide.begin();
+
+    // stale error from a previous boot
+    if (Fram.GetErrorCodeByte() != FAULT_NONE) {
+        bool all_ok = Baro.isHealthy() && Imu.isHealthy() && Servos.isHealthy();
+        if (all_ok) {
+            Fram.SetErrorCodeByte(FAULT_NONE);
+            // If we were in FAULT from last boot, recover to IDLE
+            if (Fram.GetProgramState() == static_cast<uint8_t>(ProgramState::FAULT)) {
+                Fram.SetProgramState(static_cast<uint8_t>(ProgramState::IDLE));
+                Serial.println(F("Previous fault cleared, all systems healthy."));
+            }
+        }
+    }
+
     uint8_t prev_state = Fram.GetProgramState();
     if (prev_state == static_cast<uint8_t>(ProgramState::UNINITIALIZED)) {
         Fram.SetProgramState(static_cast<uint8_t>(ProgramState::IDLE));
@@ -55,80 +205,23 @@ void setup() {
     Cmd.begin();
 }
 
-void printSensors() {
-    Serial.println(F("=========================================="));
-
-    // Barometer
-    if (Baro.isHealthy()) {
-        Serial.print(F("Press: ")); Serial.print(Baro.getPressurePa(), 1); Serial.print(F(" Pa  "));
-        Serial.print(F("Temp: "));  Serial.print(Baro.getTemperatureC(), 2); Serial.print(F(" C  "));
-        Serial.print(F("Alt: "));   Serial.print(Baro.getAltitudeM(), 2);    Serial.println(F(" m"));
-    } else {
-        Serial.println(F("Baro: FAULT"));
-    }
-
-    if (!Imu.isHealthy()) {
-        Serial.println(F("IMU: FAULT"));
-        return;
-    }
-
-    Orientation       o = Imu.getOrientation();
-    Quaternion        q = Imu.getQuaternion();
-    Vec3              a = Imu.getLinearAccel();
-    Vec3              g = Imu.getGravityVector();
-    Vec3              gyr = Imu.getGyro();
-    Vec3              raw = Imu.getRawAccel();
-    CalibrationStatus c = Imu.getCalibration();
-
-    Serial.print(F("Euler  (deg)    : head=")); Serial.print(o.heading, 1);
-    Serial.print(F("  roll="));                 Serial.print(o.roll,    1);
-    Serial.print(F("  pitch="));                Serial.println(o.pitch, 1);
-
-    Serial.print(F("Quat            : w=")); Serial.print(q.w, 3);
-    Serial.print(F(" x="));                  Serial.print(q.x, 3);
-    Serial.print(F(" y="));                  Serial.print(q.y, 3);
-    Serial.print(F(" z="));                  Serial.println(q.z, 3);
-
-    Serial.print(F("LinAcc (mg)     : x=")); Serial.print(a.x, 1);
-    Serial.print(F("  y="));                 Serial.print(a.y, 1);
-    Serial.print(F("  z="));                 Serial.println(a.z, 1);
-
-    Serial.print(F("Gravity (mg)    : x=")); Serial.print(g.x, 1);
-    Serial.print(F("  y="));                 Serial.print(g.y, 1);
-    Serial.print(F("  z="));                 Serial.println(g.z, 1);
-
-    Serial.print(F("Gyro (dps)      : x=")); Serial.print(gyr.x, 1);
-    Serial.print(F("  y="));                 Serial.print(gyr.y, 1);
-    Serial.print(F("  z="));                 Serial.println(gyr.z, 1);
-
-    Serial.print(F("RawAcc (mg)     : x=")); Serial.print(raw.x, 1);
-    Serial.print(F("  y="));                 Serial.print(raw.y, 1);
-    Serial.print(F("  z="));                 Serial.println(raw.z, 1);
-
-    Serial.print(F("Calib SYS/G/A/M : "));
-    Serial.print(c.system); Serial.print('/');
-    Serial.print(c.gyro);   Serial.print('/');
-    Serial.print(c.accel);  Serial.print('/');
-    Serial.println(c.mag);
-
-    // Derived useful quantities
-    float tilt_from_vertical = acos(g.z / 1000.0f) * 180.0f / PI;
-    Serial.print(F("Tilt from vert  : ")); Serial.print(tilt_from_vertical, 1); Serial.println(F(" deg"));
-
-    float total_g = sqrt(raw.x*raw.x + raw.y*raw.y + raw.z*raw.z) / 1000.0f;
-    Serial.print(F("Total accel mag : ")); Serial.print(total_g, 2); Serial.println(F(" G"));
-}
-
 void loop() {
     Cmd.tick();
     Baro.tick();
     Imu.tick();
-
-    static unsigned long lastPrint = 0;
-    if (millis() - lastPrint > 1000) {
-        lastPrint = millis();
-	Block.timestamp_ms = millis();
-        //printSensors();
-	Fram.WriteDataBlock(&Block);
+    Servos.tick();
+    Guide.tick();
+    updateStateMachine();
+    static unsigned long lastLog = 0;
+    unsigned long now = millis();
+    if (now - lastLog >= LOG_INTERVAL_MS) {
+        lastLog = now;
+        uint8_t state = Fram.GetProgramState();
+        // Only log during active flight states
+        if (state >= static_cast<uint8_t>(ProgramState::ARMED) &&
+            state <= static_cast<uint8_t>(ProgramState::LANDED)) {
+            packDataBlock();
+            Fram.WriteDataBlock(&Block);
+        }
     }
 }

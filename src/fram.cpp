@@ -89,6 +89,47 @@ void FRAM::DumpDataBytes() {
 		Serial.println();
     	}
 }
+
+void FRAM::DumpCSV() {
+    uint16_t rec = GetRecordCount();
+    DataBlock block;
+
+    Serial.println(F("time_ms,pressure_pa,qw,qx,qy,qz,accel_x_mg,accel_y_mg,accel_z_mg,pid_pitch,pid_yaw,pid_roll,fin0,fin1,fin2,fin3,state,flags"));
+
+    for (uint16_t i = 0; i < rec; ++i) {
+        if (!ReadDataBlock(i, &block)) {
+#ifdef DIAG_FRAM
+            Serial.print(F("# READ FAIL record ")); Serial.println(i);
+#endif
+            continue;
+        }
+
+ 
+        Serial.print(block.timestamp_ms); Serial.print(',');
+        Serial.print(block.pressure_pa);  Serial.print(',');
+
+        Serial.print(block.qw / 16384.0f, 4); Serial.print(',');
+        Serial.print(block.qx / 16384.0f, 4); Serial.print(',');
+        Serial.print(block.qy / 16384.0f, 4); Serial.print(',');
+        Serial.print(block.qz / 16384.0f, 4); Serial.print(',');
+
+        Serial.print(block.accel_x); Serial.print(',');
+        Serial.print(block.accel_y); Serial.print(',');
+        Serial.print(block.accel_z); Serial.print(',');
+
+        Serial.print(block.pid_pitch / 100.0f, 2); Serial.print(',');
+        Serial.print(block.pid_yaw   / 100.0f, 2); Serial.print(',');
+        Serial.print(block.pid_roll  / 100.0f, 2); Serial.print(',');
+
+        Serial.print(block.fin_0); Serial.print(',');
+        Serial.print(block.fin_1); Serial.print(',');
+        Serial.print(block.fin_2); Serial.print(',');
+        Serial.print(block.fin_3); Serial.print(',');
+
+        Serial.print(block.flight_state); Serial.print(',');
+        Serial.println(block.flags);
+    }
+}
 void FRAM::DumpControlBlock() {
     uint8_t buff[FRAM_CONTROLBLOCK_SIZE];
 
@@ -155,8 +196,19 @@ bool FRAM::WriteControlBlockByte(uint16_t addr, uint8_t byte) {
     };
     return WriteBytes(addr, &byte, 1);
 }
-void ResetFram() {
-	Serial.print("Need to do.");
+void FRAM::ResetFram() {
+    WriteControlBlockByte(FRAM_CURSOR_MSB, 0);
+    WriteControlBlockByte(FRAM_CURSOR_LSB, 0);
+    WriteControlBlockByte(FRAM_RECORD_COUNT_MSB, 0);
+    WriteControlBlockByte(FRAM_RECORD_COUNT_LSB, 0);
+    WriteControlBlockByte(FRAM_FULL_BYTE, 0);
+    WriteControlBlockByte(FRAM_ERROR_BYTE, 0);
+    WriteControlBlockByte(FRAM_PROGRAMSTATE_BYTE, static_cast<uint8_t>(ProgramState::IDLE));
+    _cursor_ = 0;
+
+#ifdef DIAG_FRAM
+    Serial.println(F("FRAM reset complete"));
+#endif
 }
 // ---- TESTING / SANITY METHODS ---- //
 void FRAM::controlBlockSanityTest() {

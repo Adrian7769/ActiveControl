@@ -20,6 +20,10 @@ public:
     void setAll(float d0, float d1, float d2, float d3);
     void center();
 
+    void  setTrim(uint8_t index, float degrees);
+    float getTrim(uint8_t index) const;
+    void  clearAllTrim();
+
     ServoState getState() const { return _state; }
     bool    isHealthy()    const { return _healthy; }
     uint8_t getLastFault() const { return _last_fault; }
@@ -27,10 +31,10 @@ public:
 private:
     Servo _servo[SERVO_COUNT];
     ServoState _state;
+    float   _trim[SERVO_COUNT];   // per-servo trim offset in degrees
     bool    _healthy;
     uint8_t _last_fault;
 
-    // ESP32 GPIO pins
     static constexpr uint8_t SERVO_PINS[SERVO_COUNT] = { 25, 26, 27, 14 };
     static constexpr int PULSE_MIN_US = 1000;  // 0 degrees
     static constexpr int PULSE_MAX_US = 2000;  // 180 degrees

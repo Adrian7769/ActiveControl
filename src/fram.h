@@ -5,36 +5,36 @@
 
 struct __attribute__((packed)) DataBlock {
     // ---- Time (4 bytes) ----
-    uint32_t timestamp_ms;          // millis()
+    uint32_t timestamp_ms; // millis()
     // ---- Barometer (4 bytes) ----
-    uint32_t pressure_pa;           // raw pressure
+    uint32_t pressure_pa; // raw pressure
     // ---- Quaternion (8 bytes) ----
-    int16_t  qw;                    // scaled: real_value * 16384
-    int16_t  qx;                    // (BNO055 native scaling, no precision loss)
+    int16_t  qw;// scaled: real_value * 16384
+    int16_t  qx;// (BNO055 native scaling, no precision loss)
     int16_t  qy;
     int16_t  qz;
     // ---- Linear acceleration (6 bytes) ----
-    int16_t  accel_x;               // milli-g (mg)
+    int16_t  accel_x; // milli-g (mg)
     int16_t  accel_y;
     int16_t  accel_z;
     // ---- Guidance outputs (3 bytes) ----
-    int8_t   pid_pitch;             // -100 to +100 (normalized * 100)
+    int8_t   pid_pitch; // -100 to +100 (normalized * 100)
     int8_t   pid_yaw;
     int8_t   pid_roll;
     // ---- Fin positions (4 bytes) ----
-    uint8_t  fin_0;                 // degrees 0-180
+    uint8_t  fin_0; // degrees 0-180
     uint8_t  fin_1;
     uint8_t  fin_2;
     uint8_t  fin_3;
     // ---- System (2 bytes) ----
     uint8_t  flight_state;
     uint8_t  flags;
-    //        bit 0: guidance enabled
-    //        bit 1: FRAM >90% full
-    //        bit 2: IMU unhealthy
-    //        bit 3: baro unhealthy
-    //        bit 4: servo unhealthy
-    //        bits 5-7: reserved
+    // bit 0: guidance enabled
+    // bit 1: FRAM >90% full
+    // bit 2: IMU unhealthy
+    // bit 3: baro unhealthy
+    // bit 4: servo unhealthy
+    // bits 5-7: reserved
     uint8_t  _reserved;             
 };
 
@@ -68,9 +68,11 @@ public:
     bool ReadDataBlock(uint16_t index, DataBlock* out);
 
     void DumpDataBytes();
+    void DumpCSV();
     void DumpControlBlock();
     void ResetFram();
-    // testing functions
+
+    // testing functions (need to implement)
     void test();
     void controlBlockSanityTest();
     void overFlowTest();

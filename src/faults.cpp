@@ -8,7 +8,7 @@ const FaultEntry FAULT_TABLE[] = {
     { FAULT_BMP_NOT_FOUND_LOCAL, "BMP_NF", "BMP280 not found"},
     { FAULT_BMP_TIMEOUT_LOCAL, "BMP_T", "BPM280 timeout"},
     { FAULT_BNO_NOT_FOUND_LOCAL, "BNO_NF", "BNO055 not found"},
-    { FAULT_BNO_TIMEOUT_LOCAL, "BNO_T", "BNO055 timeout"}
+    { FAULT_BNO_TIMEOUT_LOCAL, "BNO_T", "BNO055 timeout"},
     { FAULT_SERVO_INIT_LOCAL, "SERVO_INIT", "Servo init failed" }
 };
 const size_t FAULT_TABLE_SIZE = sizeof(FAULT_TABLE) / sizeof(FAULT_TABLE[0]);
