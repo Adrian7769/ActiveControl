@@ -459,25 +459,21 @@ void Commands::cmdSensors() {
         Serial.print(q.x, 3); Serial.print(F(" "));
         Serial.print(q.y, 3); Serial.print(F(" "));
         Serial.println(q.z, 3);
-
         Orientation o = _imu->getOrientation();
         Serial.print(F("  Euler:  "));
         Serial.print(F("H:")); Serial.print(o.heading, 1);
         Serial.print(F(" R:")); Serial.print(o.roll, 1);
         Serial.print(F(" P:")); Serial.println(o.pitch, 1);
-
         Vec3 a = _imu->getLinearAccel();
         Serial.print(F("  Accel:  "));
         Serial.print(a.x, 1); Serial.print(F(" "));
         Serial.print(a.y, 1); Serial.print(F(" "));
         Serial.print(a.z, 1); Serial.println(F(" mg"));
-
         Vec3 g = _imu->getGravityVector();
         Serial.print(F("  Grav:   "));
         Serial.print(g.x, 1); Serial.print(F(" "));
         Serial.print(g.y, 1); Serial.print(F(" "));
         Serial.print(g.z, 1); Serial.println(F(" mg"));
-
         CalibrationStatus c = _imu->getCalibration();
         Serial.print(F("  Cal:    S:"));
         Serial.print(c.system); Serial.print(F(" G:"));
@@ -488,7 +484,6 @@ void Commands::cmdSensors() {
         Serial.print(F("FAULT 0x"));
         Serial.println(_imu ? _imu->getLastFault() : 0xFF, HEX);
     }
-
     Serial.print(F("Servos: "));
     if (_servo != nullptr && _servo->isHealthy()) {
         Serial.println(F("OK"));
@@ -508,7 +503,6 @@ void Commands::cmdSensors() {
     } else {
         Serial.println(F("NOT AVAILABLE"));
     }
-
     Serial.print(F("Guide:  "));
     if (_guide != nullptr) {
         Serial.print(_guide->isEnabled() ? F("ENABLED") : F("DISABLED"));
@@ -527,7 +521,6 @@ void Commands::cmdSensors() {
 
     Serial.println(F("---------------"));
 }
-
 void Commands::cmdCal() {
     if (_imu == nullptr || !_imu->isHealthy()) {
         Serial.println(F("ERR: IMU not healthy"));
@@ -543,7 +536,6 @@ void Commands::cmdCal() {
     Serial.println(ok ? F("Fully calibrated.") : F("Move rocket through all orientations."));
     Serial.println(F("--------------------------"));
 }
-
 void Commands::cmdServo(const char* arg) {
     if (_servo == nullptr || !_servo->isHealthy()) {
         Serial.println(F("ERR: servo driver not available"));
@@ -587,7 +579,6 @@ void Commands::cmdServo(const char* arg) {
     Serial.print(F(" -> ")); Serial.print(angle, 1);
     Serial.println(F(" deg"));
 }
-
 void Commands::cmdCenter() {
     if (_servo == nullptr || !_servo->isHealthy()) {
         Serial.println(F("ERR: servo driver not available"));
@@ -600,7 +591,6 @@ void Commands::cmdCenter() {
     _servo->center();
     Serial.println(F("All fins centered (90 deg)"));
 }
-
 void Commands::cmdTrim(const char* arg) {
     if (_servo == nullptr || !_servo->isHealthy()) {
         Serial.println(F("ERR: servo driver not available"));
@@ -641,7 +631,6 @@ void Commands::cmdTrim(const char* arg) {
     if (offset >= 0) Serial.print('+');
     Serial.print(offset, 1); Serial.println(F(" deg"));
 }
-
 void Commands::cmdGuide(const char* arg) {
     if (_guide == nullptr) {
         Serial.println(F("ERR: guidance not available"));
@@ -680,7 +669,6 @@ void Commands::cmdGuide(const char* arg) {
         Serial.println(F("usage: GUIDE on|off"));
     }
 }
-
 void Commands::cmdGains(const char* arg) {
     if (_guide == nullptr) {
         Serial.println(F("ERR: guidance not available"));
@@ -703,7 +691,6 @@ void Commands::cmdGains(const char* arg) {
     float ki = strtof(ptr, &ptr);
     while (*ptr == ' ') ptr++;
     float kd = strtof(ptr, &ptr);
-
     if (kp < 0 || ki < 0 || kd < 0) {
         Serial.println(F("ERR: gains must be >= 0"));
         return;
@@ -717,7 +704,6 @@ void Commands::cmdGains(const char* arg) {
     Serial.print(F(" Ki=")); Serial.print(ki, 3);
     Serial.print(F(" Kd=")); Serial.println(kd, 3);
 }
-
 void Commands::cmdArm() {
     if (_fram->GetErrorCodeByte() != 0x00) {
         Serial.println(F("ERR: cannot ARM with active fault"));
@@ -738,7 +724,6 @@ void Commands::cmdArm() {
     _fram->SetProgramState(static_cast<uint8_t>(ProgramState::ARMED));
     Serial.println(F("ARMED. Watching for launch."));
 }
-
 void Commands::cmdDisarm() {
     if (_fram->GetProgramState() != static_cast<uint8_t>(ProgramState::ARMED)) {
         Serial.println(F("ERR: DISARM only allowed from ARMED"));
@@ -750,14 +735,11 @@ void Commands::cmdDisarm() {
     _fram->SetProgramState(static_cast<uint8_t>(ProgramState::IDLE));
     Serial.println(F("Disarmed. Returning to IDLE."));
 }
-
-
 void Commands::cmdMonitor(const char* arg) {
     if (arg == nullptr || *arg == '\0') {
         Serial.println(F("usage: MON <sensors|servos|pid|guide|all> [ms]"));
         return;
     }
-
     // Parse mode
     char modeBuf[16];
     const char* space = strchr(arg, ' ');
@@ -765,7 +747,6 @@ void Commands::cmdMonitor(const char* arg) {
     if (len >= sizeof(modeBuf)) len = sizeof(modeBuf) - 1;
     memcpy(modeBuf, arg, len);
     modeBuf[len] = '\0';
-
     MonitorMode mode = MonitorMode::NONE;
     if      (strcasecmp(modeBuf, "sensors") == 0) mode = MonitorMode::SENSORS;
     else if (strcasecmp(modeBuf, "servos")  == 0) mode = MonitorMode::SERVOS;
@@ -789,7 +770,6 @@ void Commands::cmdMonitor(const char* arg) {
             return;
         }
     }
-
     _monMode = mode;
     _monLastMs = millis();
     Serial.print(F("Monitoring ")); Serial.print(modeBuf);
@@ -797,7 +777,6 @@ void Commands::cmdMonitor(const char* arg) {
     Serial.println(F("ms (any key to stop)"));
     Serial.println();
 }
-
 void Commands::cmdUnknown(const char* verb) {
     Serial.print(F("unknown command: "));
     Serial.println(verb);

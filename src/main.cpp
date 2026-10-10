@@ -37,7 +37,6 @@ void packDataBlock() {
     Block.qw = (int16_t)(q.w * 16384.0f);
     Block.qx = (int16_t)(q.x * 16384.0f);
     Block.qy = (int16_t)(q.y * 16384.0f);
-
     Block.qz = (int16_t)(q.z * 16384.0f);
     Vec3 a = Imu.getLinearAccel();
     Block.accel_x = (int16_t)a.x;
@@ -104,7 +103,6 @@ void updateStateMachine() {
 #endif
             }
             break;
-
         case ProgramState::ASCENT:
             if (checkApogeeDetected()) {
                 Fram.SetProgramState(static_cast<uint8_t>(ProgramState::APOGEE));
@@ -114,11 +112,9 @@ void updateStateMachine() {
 #endif
             }
             break;
-
         case ProgramState::APOGEE:
             Fram.SetProgramState(static_cast<uint8_t>(ProgramState::DESCENT));
             break;
-
         case ProgramState::DESCENT:
             break;
 
@@ -131,6 +127,7 @@ void setup() {
     delay(100);  
     Wire.begin(ESP_SDA_PIN, ESP_SCL_PIN);
     Wire.setClock(400000);  // 400 kHz 
+			    // We can set this to 1Mhz (See FRAM SPECS)
     Fram.begin();
     uint8_t fault;
     fault = Baro.begin();

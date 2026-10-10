@@ -1,5 +1,4 @@
 #include "PID.h"
-
 PIDController::PIDController(float kp, float ki, float kd, float out_min, float out_max)
     : _kp(kp), _ki(ki), _kd(kd)
     , _integral(0), _prev_error(0)
@@ -35,7 +34,7 @@ float PIDController::compute(float error, float dt_s) {
     _prev_error = error;
     // out = p + i + d
     float out = p_term + i_term + d_term;
-    // saturate
+    // handle saturation case
     if (out > _out_max) {
 	    out = _out_max;
     }

@@ -1,6 +1,5 @@
 #ifndef IMU_H
 #define IMU_H
-
 #include <DFRobot_BNO055.h>
 
 struct Orientation {
@@ -14,14 +13,12 @@ struct Quaternion {
 struct Vec3 {
     float x, y, z;
 };
-
 struct CalibrationStatus {
     uint8_t system;  // 0-3, 3 = fully calibrated
     uint8_t gyro;
     uint8_t accel;
     uint8_t mag;
 };
-
 class IMU {
 public:
     IMU();
@@ -34,7 +31,6 @@ public:
     Vec3 getGyro() const { return _gyro; }
     Vec3 getRawAccel() const { return _raw_accel; }
     CalibrationStatus getCalibration()  const { return _calibration; }
-
     bool    isHealthy() const { return _healthy; }
     uint8_t getLastFault() const { return _last_fault; }
 
@@ -47,12 +43,10 @@ private:
     Vec3 _gyro;
     Vec3 _raw_accel;
     CalibrationStatus _calibration;
-    
     bool    _healthy;
     uint8_t _last_fault;
-    
     unsigned long _last_update_ms;
-    static constexpr unsigned long UPDATE_INTERVAL_MS = 20;  // 50 Hz
+    static constexpr unsigned long UPDATE_INTERVAL_MS = 20;  // 50 Hz (NO NO NO GOOD)
 };
 
 #endif

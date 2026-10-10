@@ -15,7 +15,7 @@ Guidance::Guidance(IMU* imu, ServoDriver* servos)
 
 void Guidance::begin(const GuidanceConfig& cfg) {
     _pid_pitch = PIDController(cfg.kp_pitch, cfg.ki_pitch, cfg.kd_pitch, -1, 1);
-    _pid_yaw   = PIDController(cfg.kp_yaw,   cfg.ki_yaw,   cfg.kd_yaw,  -1, 1);
+
     _pid_roll  = PIDController(cfg.kp_roll,  cfg.ki_roll,  cfg.kd_roll,  -1, 1);
     _max_defl  = cfg.max_deflection;
 }
@@ -28,14 +28,11 @@ void Guidance::tick() {
     if (elapsed < TICK_INTERVAL_US) return;
     float dt = elapsed / 1e6f;
     _last_tick_us = now;
-
     if (dt > 0.05f) dt = 0.05f;
-
     Quaternion q = _imu->getQuaternion();
 
     float pitch_err, yaw_err, roll_err;
     computeErrors(q, pitch_err, yaw_err, roll_err);
-
     _pitch_cmd = _pid_pitch.compute(pitch_err, dt);
     _yaw_cmd   = _pid_yaw.compute(yaw_err, dt);
     _roll_cmd  = _pid_roll.compute(roll_err, dt);
@@ -55,6 +52,7 @@ void Guidance::computeErrors(const Quaternion& q,
     // Quaternion multiplication:
     // (a.w + a.xi + a.yj + a.zk)(b.w + b.xi + b.yj + b.zk)
     float cw =  q.w;   // conjugate of current
+		       // This is wrong!
     float cx = -q.x;
     float cy = -q.y;
     float cz = -q.z;
@@ -74,19 +72,25 @@ void Guidance::mixFins(float pitch_cmd, float yaw_cmd, float roll_cmd) {
     float p = pitch_cmd * _max_defl;
     float y = yaw_cmd   * _max_defl;
     float r = roll_cmd  * _max_defl;
+    // Please update this
+
     // Up roll +, Left Yaw +, Forward Pitch +
+
     //         Fin 0
     //           |
     //  Fin 3 ---+--- Fin 1
     //           |
     //         Fin 2
+
     // Fin 0 (top)    and Fin 2 (bottom) control PITCH only.
     // Fin 1 (right)  and Fin 3 (left)   control YAW only.
     // Roll: all four fins deflect in the same rotational sense.
+
     float fin0 = 90.0f + p + r;   // top:    pitch
     float fin1 = 90.0f + y + r;   // right:  yaw
     float fin2 = 90.0f - p + r;   // bottom: pitch (opposite)
     float fin3 = 90.0f - y + r;   // left:   yaw (opposite)
+
     _servos->setAll(fin0, fin1, fin2, fin3);
 }
 void Guidance::enable() {
@@ -96,7 +100,7 @@ void Guidance::enable() {
     // Capture current orientation as the target.
     // The rocket must be in its desired orientation (vertical)
     // when guidance is enabled.
-    _q_ref = _imu->getQuaternion();
+    _q_ref = _imu->getQuaternion(); //This needs to be validated.
     _pitch_cmd = 0;
     _yaw_cmd   = 0;
     _roll_cmd  = 0;
