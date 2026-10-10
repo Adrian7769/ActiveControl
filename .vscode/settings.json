@@ -1,3 +1,19 @@
 {
-    "idf.currentSetup": "C:\\Users\\Adria\\esp\\v6.1\\esp-idf"
+    "idf.currentSetup": "C:\\Users\\Adria\\esp\\v6.1\\esp-idf",
+    "idf.flashType": "UART",
+    "idf.port": "COM4",
+    "idf.monitorPort": "COM4",
+    "idf.customExtraVars": {
+        "IDF_TARGET": "esp32"
+    },
+    "clangd.path": "C:\\Users\\Adria\\.espressif\\tools\\esp-clangd\\esp-21.1.3_20260408\\esp-clangd\\bin\\clangd.exe",
+    "clangd.arguments": [
+      "--background-index",
+      "--query-driver=**",
+      "--compile-commands-dir=c:\\Users\\Adria\\OneDrive\\Desktop\\Projects\\EAGLE\\build"
+    ],
+    "idf.openOcdConfigs": [
+        "interface/ftdi/esp_ftdi.cfg",
+        "target/esp32.cfg"
+    ]
 }
