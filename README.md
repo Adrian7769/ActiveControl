@@ -3,9 +3,9 @@
 EAGLE is a custom ESP32-based flight computer for an actively controlled, canard-steered rocket.
  
 <p align="center">
-  <img src="docs/images/board-top.jpg" alt="EAGLE flight computer, top side" width="45%">
+  <img src="docs/images/IMG_5060.jpg" alt="EAGLE flight computer, top side" width="45%">
   &nbsp;
-  <img src="docs/images/board-bottom.jpg" alt="EAGLE flight computer, bottom side" width="45%">
+  <img src="docs/images/IMG_5031.jpg" alt="EAGLE flight computer, bottom side" width="45%">
 </p>
 
 ## Contents
