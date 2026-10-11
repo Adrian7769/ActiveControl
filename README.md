@@ -28,7 +28,6 @@ EAGLE is a custom ESP32-based flight computer for an actively controlled, canard
 - **Automatic power switching** between battery and USB
 - **Battery voltage monitoring**, buzzer, status LED, and 21 test points
 - **USB-C** for flashing and serial monitor, with auto-reset
-- 
 ## Hardware
 
 | Block | Part | Interface | Notes |
@@ -75,7 +74,9 @@ The firmware is written in C on [ESP-IDF](https://docs.espressif.com/projects/es
  
 ## Roadmap
  
-- [ ] TBD
+- [ ] Preriphrial API (SPI / I2C / GPIO)
+- [ ] Error Handling API 
+- [ ] 
       
 ## Credits
  
